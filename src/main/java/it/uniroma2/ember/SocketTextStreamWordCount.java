@@ -17,8 +17,6 @@ package it.uniroma2.ember;
  * limitations under the License.
  */
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.avro.data.Json;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;

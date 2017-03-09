@@ -61,11 +61,11 @@ public class EmberInput {
             this.consumption = consumption;
         }
 
-        public boolean isPower_on() {
+        public boolean isPowerOn() {
             return power_on;
         }
 
-        public void setPower_on(boolean power_on) {
+        public void setPowerOn(boolean power_on) {
             this.power_on = power_on;
         }
 
