@@ -75,12 +75,16 @@ public class SocketTextStreamWordCount {
 
 		// get input data
 		Properties properties = new Properties();
-		properties.setProperty("bootstrap.servers", "localhost:9092");
+		/* to be setted by config file eventually */
+		//properties.setProperty("bootstrap.servers", "localhost:9092");
 		// only required for Kafka 0.8
-		properties.setProperty("zookeeper.connect", "localhost:2181");
-		properties.setProperty("group.id", "test");
+		//properties.setProperty("zookeeper.connect", "localhost:2181");
+
+		// setting group id
+		properties.setProperty("group.id", "thegrid");
+		// setting topic
 		DataStream<String> text = env
-				.addSource(new FlinkKafkaConsumer010<>("test", new SimpleStringSchema(), properties));
+				.addSource(new FlinkKafkaConsumer010<>("lamp", new SimpleStringSchema(), properties));
 
 
 		DataStream<Tuple2<String, Integer>> counts =
@@ -88,7 +92,7 @@ public class SocketTextStreamWordCount {
 		text.flatMap(new LineSplitter())
 		// group by the tuple field "0" and sum up tuple field "1"
 				.keyBy(0)
-				.sum(1);
+                .sum(1);
 
 		counts.print();
 
