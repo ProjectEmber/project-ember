@@ -17,15 +17,24 @@ package it.uniroma2.ember;
  * limitations under the License.
  */
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.avro.data.Json;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
+import org.apache.flink.streaming.util.serialization.DeserializationSchema;
+import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.apache.flink.util.Collector;
+import org.apache.sling.commons.json.JSONObject;
 
+import java.sql.Timestamp;
 import java.util.Properties;
+
+import static it.uniroma2.ember.EmberInput.parseStreetLamp;
 
 /**
  * This example shows an implementation of WordCount with data from a text
@@ -61,14 +70,6 @@ public class SocketTextStreamWordCount {
 
 	public static void main(String[] args) throws Exception {
 
-//		if (args.length != 2){
-//			System.err.println("USAGE:\nSocketTextStreamWordCount <hostname> <port>");
-//			return;
-//		}
-//
-//		String hostName = args[0];
-//		Integer port = Integer.parseInt(args[1]);
-
 		// set up the execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment
 				.getExecutionEnvironment();
@@ -76,25 +77,34 @@ public class SocketTextStreamWordCount {
 		// get input data
 		Properties properties = new Properties();
 		/* to be setted by config file eventually */
-		//properties.setProperty("bootstrap.servers", "localhost:9092");
-		// only required for Kafka 0.8
-		//properties.setProperty("zookeeper.connect", "localhost:2181");
+		properties.setProperty("bootstrap.servers", "localhost:9092");
+//		 only required for Kafka 0.8
+		properties.setProperty("zookeeper.connect", "localhost:2181");
 
 		// setting group id
 		properties.setProperty("group.id", "thegrid");
 		// setting topic
-		DataStream<String> text = env
-				.addSource(new FlinkKafkaConsumer010<>("lamp", new SimpleStringSchema(), properties));
+		DataStream<String> stream = env
+				.addSource(new FlinkKafkaConsumer010<>("lamp", new SimpleStringSchema(), properties))
+				.flatMap(new FlatMapFunction<String, EmberInput.StreetLamp>() {
+					@Override
+					public void flatMap(String s, Collector<EmberInput.StreetLamp> collector) throws Exception {
 
+						if (EmberInput.parseStreetLamp(s) == null) {
+							collector.collect(new EmberInput.StreetLamp(5,"ciao","prova", 4, true, 5, 43,343));
+						} else {
+							collector.collect(EmberInput.parseStreetLamp(s));
+						}
+					}
+				})
+				.flatMap(new FlatMapFunction<EmberInput.StreetLamp, String>() {
+					@Override
+					public void flatMap(EmberInput.StreetLamp streetLamp, Collector<String> collector) throws Exception {
+						collector.collect(streetLamp.getAddress());
+					}
+				});
 
-		DataStream<Tuple2<String, Integer>> counts =
-		// split up the lines in pairs (2-tuples) containing: (word,1)
-		text.flatMap(new LineSplitter())
-		// group by the tuple field "0" and sum up tuple field "1"
-				.keyBy(0)
-                .sum(1);
-
-		counts.print();
+		stream.print();
 
 		// execute program
 		env.execute("Java WordCount from SocketTextStream Example");

@@ -14,7 +14,11 @@ import java.sql.Timestamp;
 
 public class EmberInput {
 
-    public class StreetLamp {
+    /**
+     *  The class StreeLamp which is the OO representation for the JSON object
+     *  provided by the actual street lamp (you know... light...? That sort of things)
+     */
+    public static class StreetLamp {
 
         private int id;
         private String address;
@@ -89,30 +93,40 @@ public class EmberInput {
             this.sent = sent;
         }
 
-        public StreetLamp(int id, String address, String model, int consumption, boolean power_on, float level, Timestamp last_replacement, Timestamp sent) {
+        /**
+         * Default constructor for StreetLamp
+         *
+         * @param id unique identifier proper of the street lamp
+         * @param address where the lamp is located
+         * @param model model of the light bulb
+         * @param consumption current consumption value (in Watt)
+         * @param power_on boolean true if the lamp was on, false if it was off
+         * @param level level of power of the light bulb
+         * @param last_replacement timestamp of the last light bulb replacement
+         * @param sent timestamp of the last update about the lamp
+         */
+        public StreetLamp(int id, String address, String model, int consumption, boolean power_on, float level, int last_replacement, int sent) {
             this.id = id;
             this.address = address;
             this.model = model;
             this.consumption = consumption;
             this.power_on = power_on;
             this.level = level;
-            this.last_replacement = last_replacement;
-            this.sent = sent;
+            this.last_replacement = new Timestamp(last_replacement);
+            this.sent = new Timestamp(sent);
         }
     }
 
     /**
      * Static method to parse the JSON string provided into a
      * StreetLamp class object.
+     *
      * @param json a string defining the JSON input
-     * @return StreetLamp or null in case of error
+     * @return {@link StreetLamp} or null in case of error
      */
-    public static StreetLamp parseStreetLamp(String json) {
+    public static StreetLamp parseStreetLamp(String json) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        try {
-            return mapper.readValue(json, StreetLamp.class);
-        } catch (IOException e) {
-            return null;
-        }
+        return mapper.readValue(json, StreetLamp.class);
+
     }
 }
