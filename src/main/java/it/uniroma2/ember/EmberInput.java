@@ -26,8 +26,8 @@ public class EmberInput {
         private int consumption;
         private boolean power_on;
         private float level;
-        private Timestamp last_replacement;
-        private Timestamp sent;
+        private int last_replacement;
+        private int sent;
 
         public int getId() {
             return id;
@@ -77,19 +77,19 @@ public class EmberInput {
             this.level = level;
         }
 
-        public Timestamp getLast_replacement() {
+        public int getLast_replacement() {
             return last_replacement;
         }
 
-        public void setLast_replacement(Timestamp last_replacement) {
+        public void setLast_replacement(int last_replacement) {
             this.last_replacement = last_replacement;
         }
 
-        public Timestamp getSent() {
+        public int getSent() {
             return sent;
         }
 
-        public void setSent(Timestamp sent) {
+        public void setSent(int sent) {
             this.sent = sent;
         }
 
@@ -112,9 +112,11 @@ public class EmberInput {
             this.consumption = consumption;
             this.power_on = power_on;
             this.level = level;
-            this.last_replacement = new Timestamp(last_replacement);
-            this.sent = new Timestamp(sent);
+            this.last_replacement = last_replacement;
+            this.sent = last_replacement;
         }
+
+        public StreetLamp() { /* dummy constructor for jackson parsing */ }
     }
 
     /**

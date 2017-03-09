@@ -78,7 +78,7 @@ public class SocketTextStreamWordCount {
 		Properties properties = new Properties();
 		/* to be setted by config file eventually */
 		properties.setProperty("bootstrap.servers", "localhost:9092");
-//		 only required for Kafka 0.8
+        // only required for Kafka 0.8
 		properties.setProperty("zookeeper.connect", "localhost:2181");
 
 		// setting group id
