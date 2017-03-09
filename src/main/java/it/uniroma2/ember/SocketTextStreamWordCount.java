@@ -21,7 +21,11 @@ import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
+import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.apache.flink.util.Collector;
+
+import java.util.Properties;
 
 /**
  * This example shows an implementation of WordCount with data from a text
@@ -57,20 +61,27 @@ public class SocketTextStreamWordCount {
 
 	public static void main(String[] args) throws Exception {
 
-		if (args.length != 2){
-			System.err.println("USAGE:\nSocketTextStreamWordCount <hostname> <port>");
-			return;
-		}
-
-		String hostName = args[0];
-		Integer port = Integer.parseInt(args[1]);
+//		if (args.length != 2){
+//			System.err.println("USAGE:\nSocketTextStreamWordCount <hostname> <port>");
+//			return;
+//		}
+//
+//		String hostName = args[0];
+//		Integer port = Integer.parseInt(args[1]);
 
 		// set up the execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment
 				.getExecutionEnvironment();
 
 		// get input data
-		DataStream<String> text = env.socketTextStream(hostName, port);
+		Properties properties = new Properties();
+		properties.setProperty("bootstrap.servers", "localhost:9092");
+		// only required for Kafka 0.8
+		properties.setProperty("zookeeper.connect", "localhost:2181");
+		properties.setProperty("group.id", "test");
+		DataStream<String> text = env
+				.addSource(new FlinkKafkaConsumer010<>("test", new SimpleStringSchema(), properties));
+
 
 		DataStream<Tuple2<String, Integer>> counts =
 		// split up the lines in pairs (2-tuples) containing: (word,1)

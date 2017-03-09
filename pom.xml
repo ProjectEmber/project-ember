@@ -110,7 +110,7 @@ under the License.
 			<artifactId>flink-connector-kafka-0.10_2.11</artifactId>
 			<version>${flink.version}</version>
 		</dependency>
-		
+
 	</dependencies>
 
 	<profiles>
