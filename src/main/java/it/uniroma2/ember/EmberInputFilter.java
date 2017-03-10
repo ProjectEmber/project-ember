@@ -77,6 +77,22 @@ public class EmberInputFilter {
     }
 
     /**
+     * Implements a simple KeySelector to divide by key (address) the traffic data
+     */
+    public static final class EmberTrafficAddressSelector implements KeySelector<EmberInput.TrafficData, String> {
+
+        /**
+         * @param trafficData the TrafficData object
+         * @return TrafficData.address as a string
+         * @throws Exception
+         */
+        @Override
+        public String getKey(EmberInput.TrafficData trafficData) throws Exception {
+            return trafficData.getAddress();
+        }
+    }
+
+    /**
      * Implements a simple KeySelector to divide by key (address) the light sensors
      */
     public static final class EmberLumenAddressSelector implements KeySelector<EmberInput.LumenData, String> {
