@@ -25,35 +25,6 @@ import java.util.Properties;
 
 public class EmberInputFilter {
 
-    public static void Main(int argc, char argv[]) throws Exception {
-        // set up the execution environment
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment
-                .getExecutionEnvironment();
-
-        // get input data
-        Properties properties = new Properties();
-
-        // setting group id
-        properties.setProperty("group.id", "thegrid");
-
-        // setting topic and processing the stream from streetlamps
-        SplitStream<EmberInput.StreetLamp> selector = env
-                .addSource(new FlinkKafkaConsumer010<>("lamp", new SimpleStringSchema(), properties))
-                // parsing into a StreetLamp object
-                .flatMap(new EmberParseLamp())
-                // filtering powered on lamps
-                .split(new EmberPowerSelector());
-
-        // selecting streams
-        DataStream<EmberInput.StreetLamp> poweredOn  = selector.select("on");
-        DataStream<EmberInput.StreetLamp> poweredOff = selector.select("off");
-
-        // redirecting streams
-        poweredOff.addSink(new EmberPowerUnit());
-
-        env.execute("EmberInputFilter");
-    }
-
     /**
      * Implements a simple FlatMapFunction to parse JSON raw string into a StreetLamp object
      */
