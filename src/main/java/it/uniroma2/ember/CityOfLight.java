@@ -21,7 +21,7 @@ import java.util.Properties;
 
 public class CityOfLight
 {
-    public static void Main(int argc, char argv[]) throws Exception {
+    public static void main(String[] argv) throws Exception {
 
         // set up the execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment
@@ -31,6 +31,11 @@ public class CityOfLight
         Properties properties = new Properties();
 
         // setting group id
+        /* to be setted by config file eventually */
+        properties.setProperty("bootstrap.servers", "localhost:9092");
+        // only required for Kafka 0.8
+        properties.setProperty("zookeeper.connect", "localhost:2181");
+
         properties.setProperty("group.id", "thegrid");
 
         // STREETLAMPS DATA PROCESSING
@@ -56,6 +61,8 @@ public class CityOfLight
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
                 .window(TumblingEventTimeWindows.of(Time.seconds(10*6)))
                 .apply(new EmberStats.EmberAmbientMean());
+
+        System.out.println(env.getExecutionPlan());
 
         env.execute("EmberCityOfLight");
     }
