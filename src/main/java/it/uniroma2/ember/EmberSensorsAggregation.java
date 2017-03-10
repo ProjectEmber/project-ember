@@ -45,11 +45,11 @@ public class EmberSensorsAggregation {
     /**
      * Implements a join function to aggregate mean from traffic and lumen data streams
      */
-    public static final class EmberAggregateSensors implements JoinFunction<Tuple2<String, Float>, Tuple2<String, Float>, Float> {
+    public static final class EmberAggregateSensors implements JoinFunction<Tuple2<String, Float>, Tuple2<String, Float>, Tuple2<String, Float>> {
 
         @Override
-        public Float join(Tuple2<String, Float> trafficData, Tuple2<String, Float> lumenData) throws Exception {
-            return Math.abs(lumenData.f1 - trafficData.f1);
+        public Tuple2<String, Float> join(Tuple2<String, Float> trafficData, Tuple2<String, Float> lumenData) throws Exception {
+            return new Tuple2<>(lumenData.f0, Math.abs(lumenData.f1 - trafficData.f1));
         }
     }
 }
