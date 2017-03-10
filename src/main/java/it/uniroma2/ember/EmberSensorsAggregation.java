@@ -1,5 +1,6 @@
 package it.uniroma2.ember;
 
+import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 
@@ -38,6 +39,17 @@ public class EmberSensorsAggregation {
         @Override
         public String getKey(Tuple2<String, Float> lumenData) throws Exception {
             return lumenData.f0;
+        }
+    }
+
+    /**
+     * Implements a join function to aggregate mean from traffic and lumen data streams
+     */
+    public static final class EmberAggregateSensors implements JoinFunction<Tuple2<String, Float>, Tuple2<String, Float>, Float> {
+
+        @Override
+        public Float join(Tuple2<String, Float> trafficData, Tuple2<String, Float> lumenData) throws Exception {
+            return Math.abs(lumenData.f1 - trafficData.f1);
         }
     }
 }
