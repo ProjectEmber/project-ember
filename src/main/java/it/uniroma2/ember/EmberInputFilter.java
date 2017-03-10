@@ -61,6 +61,23 @@ public class EmberInputFilter {
     }
 
     /**
+     * Implements a simple FlatMapFunction to parse JSON raw string into a TrafficData object
+     */
+    public static final class EmberParseTraffic implements FlatMapFunction<String, EmberInput.TrafficData> {
+
+        /**
+         * Override flatMap method from FlatMapFunction
+         *
+         * @param s String, the in-line JSON to be parsed into a TrafficData object
+         * @param collector the Collector<TrafficData> to handle the stream handoff
+         */
+        @Override
+        public void flatMap(String s, Collector<EmberInput.TrafficData> collector) throws Exception {
+            collector.collect(EmberInput.parseTrafficData(s));
+        }
+    }
+
+    /**
      * Implements a simple KeySelector to divide by key (address) the lamps
      */
     public static final class EmberLampAddressSelector implements KeySelector<EmberInput.StreetLamp, String> {

@@ -6,12 +6,14 @@ package it.uniroma2.ember;
  */
 
 
+import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.datastream.WindowedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.co.CoMapFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
@@ -19,13 +21,14 @@ import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 
 import java.util.Properties;
 
-public class CityOfLight
-{
+public class CityOfLight {
     public static void main(String[] argv) throws Exception {
 
         // set up the execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment
                 .getExecutionEnvironment();
+
+        env.setParallelism(3);
 
         // get input data
         Properties properties = new Properties();
@@ -48,7 +51,6 @@ public class CityOfLight
                 .keyBy(new EmberInputFilter.EmberLampAddressSelector());
 
 
-
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors
         KeyedStream<EmberInput.LumenData, String> lumenStream = env
@@ -58,13 +60,39 @@ public class CityOfLight
                 // keying by address
                 .keyBy(new EmberInputFilter.EmberLumenAddressSelector());
 
+
+        // TRAFFIC DATA
+        // setting topic and processing the stream from traffic data API
+        KeyedStream<EmberInput.TrafficData, String> trafficStream = env
+                .addSource(new FlinkKafkaConsumer010<>("traffic", new SimpleStringSchema(), properties))
+                // parsing into TrafficData object
+                .flatMap(new EmberInputFilter.EmberParseTraffic())
+                // keying by address
+                .keyBy(new EmberInputFilter.EmberTrafficAddressSelector());
+
+
+        // AGGREGATION
         // computing mean value for ambient per street by a minute interval
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
-                .window(TumblingEventTimeWindows.of(Time.seconds(10*6)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(10)))
                 .apply(new EmberStats.EmberAmbientMean());
 
+        // computing mean value for traffic per street by a minute interval
+        DataStream<Tuple2<String, Float>> trafficMean = trafficStream
+                .window(TumblingEventTimeWindows.of(Time.seconds(10)))
+                .apply(new EmberStats.EmberTrafficMean());
+
+        // joining traffic and ambient streams in order to get the optimal light value
+        DataStream<Tuple2<String,Float>> optimalLightStream = trafficMean
+                .join(ambientMean)
+                .where(new EmberSensorsAggregation.EmberTrafficMeanSelector())
+                .equalTo(new EmberSensorsAggregation.EmberLumenMeanSelector())
+                .window(TumblingEventTimeWindows.of(Time.seconds(10)))
+                .apply(new EmberSensorsAggregation.EmberAggregateSensors());
 
         System.out.println(env.getExecutionPlan());
+
+        optimalLightStream.print();
 
         env.execute("EmberCityOfLight");
     }
