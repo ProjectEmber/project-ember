@@ -15,6 +15,6 @@ public class EmberPowerUnit implements SinkFunction<EmberInput.StreetLamp>{
 
     @Override
     public void invoke(EmberInput.StreetLamp offStreetLamp) throws Exception {
-        // actuate control ?
+        // actuate control on powered on task
     }
 }
