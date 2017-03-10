@@ -64,7 +64,6 @@ public class CityOfLight
                 .apply(new EmberStats.EmberAmbientMean());
 
 
-
         System.out.println(env.getExecutionPlan());
 
         env.execute("EmberCityOfLight");

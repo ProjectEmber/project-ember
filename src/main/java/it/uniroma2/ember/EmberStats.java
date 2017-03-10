@@ -29,4 +29,21 @@ public class EmberStats {
         }
     }
 
+    public static final class EmberTrafficMean implements WindowFunction<EmberInput.TrafficData, Tuple2<String, Float>, String, TimeWindow> {
+
+        @Override
+        public void apply(String key, TimeWindow window, Iterable<EmberInput.TrafficData> trafficData,
+                          Collector<Tuple2<String, Float>> collector) throws Exception {
+            // iterating over ambient levels
+            float ambientLevel = 0;
+            int sensorsTotal = 0;
+            for (EmberInput.TrafficData traffic : trafficData) {
+                ambientLevel += traffic.getIntensity();
+                sensorsTotal += 1;
+            }
+
+            collector.collect(new Tuple2<>(key, ambientLevel / sensorsTotal));
+        }
+    }
+
 }
