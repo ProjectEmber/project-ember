@@ -48,6 +48,7 @@ public class CityOfLight
                 .keyBy(new EmberInputFilter.EmberLampAddressSelector());
 
 
+
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors
         KeyedStream<EmberInput.LumenData, String> lumenStream = env
@@ -61,6 +62,8 @@ public class CityOfLight
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
                 .window(TumblingEventTimeWindows.of(Time.seconds(10*6)))
                 .apply(new EmberStats.EmberAmbientMean());
+
+
 
         System.out.println(env.getExecutionPlan());
 
