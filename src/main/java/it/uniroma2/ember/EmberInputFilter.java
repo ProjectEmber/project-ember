@@ -126,6 +126,22 @@ public class EmberInputFilter {
     }
 
     /**
+     * Implements a simple KeySelector to divide by key (id) the lamps
+     */
+    public static final class EmberLampIdSelector implements KeySelector<EmberInput.StreetLamp, Integer> {
+
+        /**
+         * @param streetLamp the StreetLamp object
+         * @return StreetLamp.id as an Integer
+         * @throws Exception
+         */
+        @Override
+        public Integer getKey(EmberInput.StreetLamp streetLamp) throws Exception {
+            return streetLamp.getId();
+        }
+    }
+
+    /**
      * Implements the selector to distinguish (not)powered lamps
      */
     public static final class EmberPowerSelector implements OutputSelector<EmberInput.StreetLamp> {

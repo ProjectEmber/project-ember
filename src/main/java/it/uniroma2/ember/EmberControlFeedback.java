@@ -36,7 +36,7 @@ public class EmberControlFeedback {
     }
 
     /**
-     * Implements a simple FlatMapFunction to parse JSON raw string into a StreetLamp object
+     * Implements a simple FlatMapFunction to parse StreetLamp object into a JSON string
      */
     public static final class EmberSerializeLamp implements FlatMapFunction<EmberInput.StreetLamp, String> {
 

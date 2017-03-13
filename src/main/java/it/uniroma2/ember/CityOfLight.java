@@ -6,25 +6,17 @@ package it.uniroma2.ember;
  */
 
 
-import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
-import org.apache.flink.streaming.api.datastream.SplitStream;
-import org.apache.flink.streaming.api.datastream.WindowedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.co.CoMapFunction;
-import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.apache.flink.util.Collector;
 
-import javax.xml.crypto.Data;
 import java.util.Properties;
 
 public class CityOfLight {
@@ -78,6 +70,7 @@ public class CityOfLight {
                 .keyBy(new EmberInputFilter.EmberTrafficAddressSelector());
 
 
+
         // AGGREGATION - LUMEN + TRAFFIC DATA
         // computing mean value for ambient per street by a minute interval
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
@@ -98,6 +91,7 @@ public class CityOfLight {
                 .apply(new EmberSensorsAggregation.EmberAggregateSensors());
 
 
+
         // CONTROL
         // joining optimal light stream with lamp data
         DataStream<EmberInput.StreetLamp> controlStream = lampStream
@@ -106,39 +100,66 @@ public class CityOfLight {
                 .equalTo(new EmberSensorsAggregation.EmberSensorsAddressSelector())
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberControlFeedback.EmberControlRoom());
-
         // serializing into a JSON
         DataStream<String> controlStreamSerialized = controlStream
                 .flatMap(new EmberControlFeedback.EmberSerializeLamp());
 
         // using Apache Kafka as a sink for control output
-        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration controlKafkaConfig = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
+        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigControl = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
                 controlStreamSerialized,
                 "control",
                 new SimpleStringSchema(),
                 properties
         );
         // to guarantee an at-least-once delivery
-        controlKafkaConfig.setLogFailuresOnly(false);
-        controlKafkaConfig.setFlushOnCheckpoint(true);
+        kafkaConfigControl.setLogFailuresOnly(false);
+        kafkaConfigControl.setFlushOnCheckpoint(true);
+
 
 
         // MONITORING
         // to monitor Ember results we can rank the StreetLamps by:
-        // - lamp failures
-        // - remaining life-span
-        // - mean power consumption
-
-        // Lamp Failures
+        // 1. Lamp Failures
         // TODO
 
-        // Life-Span
+
+        // 2. Life-Span
         DataStream<EmberStats.EmberLampLifeSpanRank> lifeSpanStream = lampStream
                 .windowAll(SlidingEventTimeWindows.of(Time.minutes(MONITOR_TIME_MINUTES_MIN), Time.minutes(MONITOR_TIME_MINUTES_MAX)))
                 .apply(new EmberStats.EmberLampLifeSpan());
+        // serializing into a JSON
+        DataStream<String> lifeSpanStreamSerialized = lifeSpanStream
+                .flatMap(new EmberStats.EmberSerializeRank());
 
-        // Mean Power Consumption
-        // TODO
+        // using Apache Kafka as a sink for ranking output
+        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigRank = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
+                lifeSpanStreamSerialized,
+                "rank",
+                new SimpleStringSchema(),
+                properties
+        );
+        kafkaConfigRank.setLogFailuresOnly(false);
+        kafkaConfigRank.setFlushOnCheckpoint(true);
+
+
+        // 3. Mean Power Consumption
+        DataStream<EmberStats.LampConsumption> consumptionStream = lampStream
+                .keyBy(new EmberInputFilter.EmberLampIdSelector())
+                .flatMap(new EmberStats.EmberConsumptionMean());
+        // state is queryable!
+        // serializing into a JSON
+        DataStream<String> consumptionStreamSerialized = consumptionStream
+                .flatMap(new EmberStats.EmberSerializeConsumption());
+
+        // using Apache Kafka as a sink for consumption output
+        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigConsump = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
+                consumptionStreamSerialized,
+                "consumption",
+                new SimpleStringSchema(),
+                properties
+        );
+        kafkaConfigConsump.setLogFailuresOnly(false);
+        kafkaConfigConsump.setFlushOnCheckpoint(true);
 
 
         System.out.println(env.getExecutionPlan());
