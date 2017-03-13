@@ -73,11 +73,11 @@ public class EmberInput {
             this.level = level;
         }
 
-        public int getLast_replacement() {
+        public int getLastReplacement() {
             return last_replacement;
         }
 
-        public void setLast_replacement(int last_replacement) {
+        public void setLastReplacement(int last_replacement) {
             this.last_replacement = last_replacement;
         }
 

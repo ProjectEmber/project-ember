@@ -14,18 +14,24 @@ import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.datastream.WindowedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.co.CoMapFunction;
+import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
+import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
+import org.apache.flink.util.Collector;
 
 import javax.xml.crypto.Data;
 import java.util.Properties;
 
 public class CityOfLight {
 
-    final static int WINDOW_TIME_SEC = 10;
+    private final static int WINDOW_TIME_SEC  = 10;
+    private final static int MONITOR_TIME_MINUTES_MIN = 1; // TODO by config
+    private final static int MONITOR_TIME_MINUTES_MAX = 60; // TODO by config
 
     public static void main(String[] argv) throws Exception {
 
@@ -119,7 +125,22 @@ public class CityOfLight {
 
 
         // MONITORING
+        // to monitor Ember results we can rank the StreetLamps by:
+        // - lamp failures
+        // - remaining life-span
+        // - mean power consumption
+
+        // Lamp Failures
         // TODO
+
+        // Life-Span
+        DataStream<EmberStats.EmberLampLifeSpanRank> lifeSpanStream = lampStream
+                .windowAll(SlidingEventTimeWindows.of(Time.minutes(MONITOR_TIME_MINUTES_MIN), Time.minutes(MONITOR_TIME_MINUTES_MAX)))
+                .apply(new EmberStats.EmberLampLifeSpan());
+
+        // Mean Power Consumption
+        // TODO
+
 
         System.out.println(env.getExecutionPlan());
 
