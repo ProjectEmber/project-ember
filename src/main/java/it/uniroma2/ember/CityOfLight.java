@@ -17,11 +17,16 @@ import org.apache.flink.streaming.api.functions.co.CoMapFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 
+import javax.xml.crypto.Data;
 import java.util.Properties;
 
 public class CityOfLight {
+
+    final static int WINDOW_TIME_SEC = 10;
+
     public static void main(String[] argv) throws Exception {
 
         // set up the execution environment
@@ -43,13 +48,10 @@ public class CityOfLight {
 
         // STREETLAMPS DATA PROCESSING
         // setting topic and processing the stream from streetlamps
-        KeyedStream<EmberInput.StreetLamp, String> lampSelector = env
+        DataStream<EmberInput.StreetLamp> lampStream = env
                 .addSource(new FlinkKafkaConsumer010<>("lamp", new SimpleStringSchema(), properties))
                 // parsing into a StreetLamp object
-                .flatMap(new EmberInputFilter.EmberParseLamp())
-                // keying by address
-                .keyBy(new EmberInputFilter.EmberLampAddressSelector());
-
+                .flatMap(new EmberInputFilter.EmberParseLamp());
 
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors
@@ -71,28 +73,55 @@ public class CityOfLight {
                 .keyBy(new EmberInputFilter.EmberTrafficAddressSelector());
 
 
-        // AGGREGATION
+        // AGGREGATION - LUMEN + TRAFFIC DATA
         // computing mean value for ambient per street by a minute interval
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
-                .window(TumblingEventTimeWindows.of(Time.seconds(10)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberStats.EmberAmbientMean());
 
         // computing mean value for traffic per street by a minute interval
         DataStream<Tuple2<String, Float>> trafficMean = trafficStream
-                .window(TumblingEventTimeWindows.of(Time.seconds(10)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberStats.EmberTrafficMean());
 
         // joining traffic and ambient streams in order to get the optimal light value
-        DataStream<Tuple2<String,Float>> optimalLightStream = trafficMean
+        DataStream<Tuple2<String,Tuple2<Float, Float>>> aggregatedSensorsStream = trafficMean
                 .join(ambientMean)
                 .where(new EmberSensorsAggregation.EmberTrafficMeanSelector())
                 .equalTo(new EmberSensorsAggregation.EmberLumenMeanSelector())
-                .window(TumblingEventTimeWindows.of(Time.seconds(10)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberSensorsAggregation.EmberAggregateSensors());
 
-        System.out.println(env.getExecutionPlan());
 
-        optimalLightStream.print();
+        // CONTROL
+        // joining optimal light stream with lamp data
+        DataStream<EmberInput.StreetLamp> controlStream = lampStream
+                .join(aggregatedSensorsStream)
+                .where(new EmberInputFilter.EmberLampAddressSelector())
+                .equalTo(new EmberSensorsAggregation.EmberSensorsAddressSelector())
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
+                .apply(new EmberControlFeedback.EmberControlRoom());
+
+        // serializing into a JSON
+        DataStream<String> controlStreamSerialized = controlStream
+                .flatMap(new EmberControlFeedback.EmberSerializeLamp());
+
+        // using Apache Kafka as a sink for control output
+        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration controlKafkaConfig = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
+                controlStreamSerialized,
+                "control",
+                new SimpleStringSchema(),
+                properties
+        );
+        // to guarantee an at-least-once delivery
+        controlKafkaConfig.setLogFailuresOnly(false);
+        controlKafkaConfig.setFlushOnCheckpoint(true);
+
+
+        // MONITORING
+        // TODO
+
+        System.out.println(env.getExecutionPlan());
 
         env.execute("EmberCityOfLight");
     }

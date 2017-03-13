@@ -1,7 +1,10 @@
 package it.uniroma2.ember;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.util.Collector;
 
 import java.util.Objects;
 
@@ -29,6 +32,23 @@ public class EmberControlFeedback {
                 return streetLamp;
             }
             return new EmberInput.StreetLamp();
+        }
+    }
+
+    /**
+     * Implements a simple FlatMapFunction to parse JSON raw string into a StreetLamp object
+     */
+    public static final class EmberSerializeLamp implements FlatMapFunction<EmberInput.StreetLamp, String> {
+
+        /**
+         * Override flatMap method from FlatMapFunction
+         *
+         * @param streetLamp, the {@link it.uniroma2.ember.EmberInput.StreetLamp} object to be parsed
+         * @param collector the Collector<String> to handle the control stream handoff
+         */
+        @Override
+        public void flatMap(EmberInput.StreetLamp streetLamp, Collector<String> collector) throws Exception {
+            collector.collect(new ObjectMapper().writeValueAsString(streetLamp));
         }
     }
 }
