@@ -21,6 +21,9 @@ public class EmberStats {
     public static final int MAX_LIFE_SPAN_DAYS = 200; // TODO by config!
     public static final int MAX_LIFE_SPAN_SIZE = 10;
 
+    /**
+     * The class used to store the number of lamp analyzed to make the rank
+     */
     public static class EmberLampLifeSpanRank {
 
         private int count = 0;
@@ -37,6 +40,17 @@ public class EmberStats {
         public EmberLampLifeSpanRank() { /* */ }
     }
 
+    public static class EmberLampPowerConsumptionMeans {
+        private float last_hour;
+        private float last_day;
+        private float last_week;
+    }
+
+
+    /**
+     * This class implements the AllWindowFunction interface in order to apply the calculation of a ranking
+     *  by the value of the remaining life span of lamps
+     */
     public static final class EmberLampLifeSpan implements AllWindowFunction<EmberInput.StreetLamp, EmberLampLifeSpanRank, TimeWindow> {
 
         @Override
@@ -85,8 +99,27 @@ public class EmberStats {
         }
     }
 
+    public static final class EmberLampPowerConsumption implements AllWindowFunction<EmberInput.StreetLamp, EmberLampPowerConsumptionMeans, TimeWindow> {
+
+        @Override
+        public void apply(TimeWindow timeWindow, Iterable<EmberInput.StreetLamp> iterable, Collector<EmberLampPowerConsumptionMeans> collector) throws Exception {
+
+        }
+    }
+
+    /**
+     *  This class implements the WindowFunction interface in order to apply the calculation of the mean value
+     *  from the measures provided by ambient sensors
+     */
     public static final class EmberAmbientMean implements WindowFunction<EmberInput.LumenData, Tuple2<String, Float>, String, TimeWindow> {
 
+        /**
+         * @param key the address of the ambient sensors
+         * @param window used by the interface
+         * @param sensors an iterable of {@link it.uniroma2.ember.EmberInput.LumenData}
+         * @param collector a collector where to store the result (Tuple2<address,mean_value>)
+         * @throws Exception
+         */
         @Override
         public void apply(String key, TimeWindow window, Iterable<EmberInput.LumenData> sensors,
                           Collector<Tuple2<String, Float>> collector) throws Exception {
@@ -102,8 +135,19 @@ public class EmberStats {
         }
     }
 
+    /**
+     * This class implements the WindowFunction interface in order to apply the calculation of the mean value
+     * from the measures provided by Traffic sensor system
+     */
     public static final class EmberTrafficMean implements WindowFunction<EmberInput.TrafficData, Tuple2<String, Float>, String, TimeWindow> {
 
+        /**
+         * @param key the address of the traffic measures
+         * @param window used by the interface
+         * @param trafficData an iterable of {@link it.uniroma2.ember.EmberInput.TrafficData}
+         * @param collector a collector where to store the result (Tuple2<address,mean_value>)
+         * @throws Exception
+         */
         @Override
         public void apply(String key, TimeWindow window, Iterable<EmberInput.TrafficData> trafficData,
                           Collector<Tuple2<String, Float>> collector) throws Exception {
@@ -118,5 +162,4 @@ public class EmberStats {
             collector.collect(new Tuple2<>(key, ambientLevel / sensorsTotal));
         }
     }
-
 }

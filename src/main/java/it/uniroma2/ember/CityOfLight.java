@@ -39,7 +39,6 @@ public class CityOfLight {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment
                 .getExecutionEnvironment();
 
-        env.setParallelism(3);
 
         // get input data
         Properties properties = new Properties();
