@@ -100,6 +100,10 @@ public class CityOfLight {
                 .equalTo(new EmberSensorsAggregation.EmberSensorsAddressSelector())
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberControlFeedback.EmberControlRoom());
+
+        // storing in InfluxDb the control data
+        controlStream.addSink(new EmberMonitor.EmberMonitorSink());
+
         // serializing into a JSON
         DataStream<String> controlStreamSerialized = controlStream
                 .flatMap(new EmberControlFeedback.EmberSerializeLamp());
@@ -120,7 +124,7 @@ public class CityOfLight {
         // MONITORING
         // to monitor Ember results we can rank the StreetLamps by:
         // 1. Lamp Failures
-        // TODO
+
 
 
         // 2. Life-Span

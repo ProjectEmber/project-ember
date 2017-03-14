@@ -118,6 +118,13 @@ under the License.
             <version>2.8.7</version>
         </dependency>
 
+		<!-- InfluxDB dependency for a bit taste of persistence -->
+		<dependency>
+			<groupId>org.influxdb</groupId>
+			<artifactId>influxdb-java</artifactId>
+			<version>LATEST</version>
+		</dependency>
+
 	</dependencies>
 
 	<profiles>
