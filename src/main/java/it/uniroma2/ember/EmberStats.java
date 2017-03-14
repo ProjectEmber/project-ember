@@ -256,6 +256,7 @@ public class EmberStats {
      */
     public static class EmberConsumptionMean extends RichFlatMapFunction<EmberInput.StreetLamp, LampConsumption> {
 
+        // TODO change to valuestate
         private transient ListState<LampConsumption> consumptionList;
         private static LampConsumption current = new LampConsumption();
 
