@@ -28,7 +28,7 @@ public class EmberControlFeedback {
         @Override
         public EmberInput.StreetLamp join(EmberInput.StreetLamp streetLamp, Tuple2<String, Tuple2<Float, Float>> aggregatedSensorsData) throws Exception {
             if (!Objects.equals(aggregatedSensorsData.f0, "null")) {
-                streetLamp.setLevel(aggregatedSensorsData.f1.f0 - aggregatedSensorsData.f1.f1); //TODO
+                streetLamp.setLevel(aggregatedSensorsData.f1.f0 - aggregatedSensorsData.f1.f1); //TODO control with timestamp updated
                 return streetLamp;
             }
             return new EmberInput.StreetLamp();

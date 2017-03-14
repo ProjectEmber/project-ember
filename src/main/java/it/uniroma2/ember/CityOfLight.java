@@ -100,10 +100,6 @@ public class CityOfLight {
                 .equalTo(new EmberSensorsAggregation.EmberSensorsAddressSelector())
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberControlFeedback.EmberControlRoom());
-
-        // storing in InfluxDb the control data
-        controlStream.addSink(new EmberMonitor.EmberMonitorSink());
-
         // serializing into a JSON
         DataStream<String> controlStreamSerialized = controlStream
                 .flatMap(new EmberControlFeedback.EmberSerializeLamp());
@@ -123,11 +119,7 @@ public class CityOfLight {
 
         // MONITORING
         // to monitor Ember results we can rank the StreetLamps by:
-        // 1. Lamp Failures
-
-
-
-        // 2. Life-Span
+        // 1. Life-Span
         DataStream<EmberStats.EmberLampLifeSpanRank> lifeSpanStream = lampStream
                 .windowAll(SlidingEventTimeWindows.of(Time.minutes(MONITOR_TIME_MINUTES_MIN), Time.minutes(MONITOR_TIME_MINUTES_MAX)))
                 .apply(new EmberStats.EmberLampLifeSpan());
@@ -146,7 +138,7 @@ public class CityOfLight {
         kafkaConfigRank.setFlushOnCheckpoint(true);
 
 
-        // 3. Mean Power Consumption
+        // 2. Mean Power Consumption
         DataStream<EmberStats.LampConsumption> consumptionStream = lampStream
                 .keyBy(new EmberInputFilter.EmberLampIdSelector())
                 .flatMap(new EmberStats.EmberConsumptionMean());
@@ -165,6 +157,29 @@ public class CityOfLight {
         kafkaConfigConsump.setLogFailuresOnly(false);
         kafkaConfigConsump.setFlushOnCheckpoint(true);
 
+
+
+        // ALERT
+        // retrieving and serializing alert info
+        DataStream<String> alertStream = env
+                .addSource(new EmberAlert.EmberInfluxSource())
+                .flatMap(new EmberAlert.EmberSerializeAlert());
+
+        // using Apache Kafka as a sink for alert output
+        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigAlert = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
+                alertStream,
+                "alert",
+                new SimpleStringSchema(),
+                properties
+        );
+        kafkaConfigAlert.setLogFailuresOnly(false);
+        kafkaConfigAlert.setFlushOnCheckpoint(true);
+
+
+        // DASHBOARD
+        // storing for visualization and triggers in InfluxDB
+        lampStream.addSink(new EmberAlert.EmberLampSink());
+        controlStream.addSink(new EmberAlert.EmberControlSink());
 
         System.out.println(env.getExecutionPlan());
 
