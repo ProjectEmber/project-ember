@@ -192,11 +192,13 @@ public class EmberStats {
      */
     public static class LampConsumption {
 
-        private int id         = 0;
-        private int count      = 0;
-        private int hourMean   = 0;
-        private long dayMean   = 0;
-        private long weekMean  = 0;
+        private int id          = 0;
+        private int count       = 0;
+        private float hourMean  = 0;
+        private float dayMean   = 0;
+        private float weekMean  = 0;
+        private String address;
+
 
         public int getId() {
             return id;
@@ -214,28 +216,36 @@ public class EmberStats {
             count += 1;
         }
 
-        public int getHourMean() {
+        public float getHourMean() {
             return hourMean;
         }
 
-        public void setHourMean(int hourMean) {
+        public void setHourMean(float hourMean) {
             this.hourMean = hourMean;
         }
 
-        public long getDayMean() {
+        public float getDayMean() {
             return dayMean;
         }
 
-        public void setDayMean(long dayMean) {
+        public void setDayMean(float dayMean) {
             this.dayMean = dayMean;
         }
 
-        public long getWeekMean() {
+        public float getWeekMean() {
             return weekMean;
         }
 
-        public void setWeekMean(long weekMean) {
+        public void setWeekMean(float weekMean) {
             this.weekMean = weekMean;
+        }
+
+        public String getAddress() {
+            return address;
+        }
+
+        public void setAddress(String address) {
+            this.address = address;
         }
 
         public LampConsumption() { /* */ }
@@ -263,7 +273,7 @@ public class EmberStats {
             // access the state value ...
             boolean newC = false;
             LampConsumption currentConsumption = null;
-            for (LampConsumption l : consumptionList.get()) {
+            for (LampConsumption l : this.consumptionList.get()) {
                 if (l.getId() == streetLamp.getId()) {
                     currentConsumption = l;
                     break;
@@ -274,6 +284,7 @@ public class EmberStats {
                 newC = true;
                 currentConsumption = new LampConsumption();
                 currentConsumption.setId(streetLamp.getId());
+                currentConsumption.setAddress(streetLamp.getAddress());
             }
 
 
@@ -283,13 +294,13 @@ public class EmberStats {
             currentConsumption.setWeekMean(currentConsumption.getWeekMean() + streetLamp.getConsumption());
 
 
-            // incrementing counter - every ten seconds
+            // incrementing counter - every ten seconds if it is right
             currentConsumption.incrementCount();
 
             // update the state
             // TODO check if it updates correctly! even if it is not a newConsumption
             if (newC)
-                consumptionList.add(currentConsumption);
+                this.consumptionList.add(currentConsumption);
 
             // computing mean
             // TODO calculate proper mean
@@ -311,7 +322,7 @@ public class EmberStats {
                     new ListStateDescriptor(
                             "consumption",
                             LampConsumption.class); // default value of the state, if nothing was set
-            consumptionList = getRuntimeContext().getListState(descriptor);
+            this.consumptionList = getRuntimeContext().getListState(descriptor);
             descriptor.setQueryable("consumption-list-api");
         }
     }
