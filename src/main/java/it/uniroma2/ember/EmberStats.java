@@ -257,8 +257,7 @@ public class EmberStats {
     public static class EmberConsumptionMean extends RichFlatMapFunction<EmberInput.StreetLamp, LampConsumption> {
 
         // TODO change to valuestate
-        private transient ListState<LampConsumption> consumptionList;
-        private static LampConsumption current = new LampConsumption();
+        private transient ValueState<LampConsumption> consumption;
 
         /**
          * Override flatMap from RichFlatMap
@@ -271,18 +270,10 @@ public class EmberStats {
         @Override
         public void flatMap(EmberInput.StreetLamp streetLamp, Collector<LampConsumption> collector) throws Exception {
 
-            // access the state value ...
-            boolean newC = false;
-            LampConsumption currentConsumption = null;
-            for (LampConsumption l : this.consumptionList.get()) {
-                if (l.getId() == streetLamp.getId()) {
-                    currentConsumption = l;
-                    break;
-                }
-            }
-            // ... or creating a new state value
+
+            LampConsumption currentConsumption = this.consumption.value();
+
             if (currentConsumption == null) {
-                newC = true;
                 currentConsumption = new LampConsumption();
                 currentConsumption.setId(streetLamp.getId());
                 currentConsumption.setAddress(streetLamp.getAddress());
@@ -298,17 +289,14 @@ public class EmberStats {
             // incrementing counter - every ten seconds if it is right
             currentConsumption.incrementCount();
 
-            // update the state
-            // TODO check if it updates correctly! even if it is not a newConsumption
-            if (newC)
-                this.consumptionList.add(currentConsumption);
-
             // computing mean
             // TODO calculate proper mean
-            current = currentConsumption;
+
+            // updating the value state
+            this.consumption.update(currentConsumption);
 
             // collecting results
-            collector.collect(current);
+            collector.collect(currentConsumption);
 
         }
 
@@ -319,11 +307,11 @@ public class EmberStats {
         @Override
         @SuppressWarnings("unchecked")
         public void open(Configuration config) {
-            ListStateDescriptor descriptor =
-                    new ListStateDescriptor(
+            ValueStateDescriptor descriptor =
+                    new ValueStateDescriptor(
                             "consumption",
                             LampConsumption.class); // default value of the state, if nothing was set
-            this.consumptionList = getRuntimeContext().getListState(descriptor);
+            this.consumption = getRuntimeContext().getState(descriptor);
             descriptor.setQueryable("consumption-list-api");
         }
     }
