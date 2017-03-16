@@ -57,11 +57,11 @@ public class EmberInput {
             this.consumption = consumption;
         }
 
-        public boolean isPowerOn() {
+        public boolean isPower_on() {
             return power_on;
         }
 
-        public void setPowerOn(boolean power_on) {
+        public void setPower_on(boolean power_on) {
             this.power_on = power_on;
         }
 
@@ -73,11 +73,11 @@ public class EmberInput {
             this.level = level;
         }
 
-        public int getLastReplacement() {
+        public int getLast_replacement() {
             return last_replacement;
         }
 
-        public void setLastReplacement(int last_replacement) {
+        public void setLast_replacement(int last_replacement) {
             this.last_replacement = last_replacement;
         }
 
@@ -132,7 +132,7 @@ public class EmberInput {
      *  The class LumenData is the OO representation for the JSON object
      *  provided by light sensors on lamps.
      */
-    public class LumenData {
+    public static class LumenData {
 
         private int id;
         private String address;
@@ -191,7 +191,7 @@ public class EmberInput {
      *  The class TrafficData represents the actual traffic levels
      *  (it is provided by an external module as a JSON)
      */
-    public class TrafficData {
+    public static class TrafficData {
 
         private String address;
         private float intensity;

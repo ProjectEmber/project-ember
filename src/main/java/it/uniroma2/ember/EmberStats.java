@@ -151,7 +151,7 @@ public class EmberStats {
             // iterating over the collection of lamps
             int i = 0;
             for (EmberInput.StreetLamp streetLamp : collection) {
-                lamps[i] = new Lamp(streetLamp.getLastReplacement(), streetLamp);
+                lamps[i] = new Lamp(streetLamp.getLast_replacement(), streetLamp);
                 i++;
             }
 

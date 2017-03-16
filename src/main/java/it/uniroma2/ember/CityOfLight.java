@@ -6,30 +6,48 @@ package it.uniroma2.ember;
  */
 
 
+import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks;
+import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
+import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSink;
+import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSinkFunction;
+import org.apache.flink.streaming.connectors.elasticsearch2.RequestIndexer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.Requests;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 
-import java.util.Properties;
+import javax.annotation.Nullable;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.*;
 
 public class CityOfLight {
 
-    private final static int WINDOW_TIME_SEC  = 10;
-    private final static int MONITOR_TIME_MINUTES_MIN = 1; // TODO by config
-    private final static int MONITOR_TIME_MINUTES_MAX = 60; // TODO by config
+    private final static long WINDOW_TIME_SEC  = 10;
+    private final static long MONITOR_TIME_MINUTES_MIN = 1; // TODO by config
+    private final static long MONITOR_TIME_MINUTES_MAX = 60; // TODO by config
 
     public static void main(String[] argv) throws Exception {
 
         // set up the execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment
                 .getExecutionEnvironment();
+
+        env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
 
 
         // get input data
@@ -38,8 +56,8 @@ public class CityOfLight {
         // setting group id
         /* to be setted by config file eventually */
         properties.setProperty("bootstrap.servers", "localhost:9092");
-        // only required for Kafka 0.8
-        properties.setProperty("zookeeper.connect", "localhost:2181");
+//        // only required for Kafka 0.8
+//        properties.setProperty("zookeeper.connect", "localhost:2181");
 
         properties.setProperty("group.id", "thegrid");
 
@@ -47,6 +65,12 @@ public class CityOfLight {
         // setting topic and processing the stream from streetlamps
         DataStream<EmberInput.StreetLamp> lampStream = env
                 .addSource(new FlinkKafkaConsumer010<>("lamp", new SimpleStringSchema(), properties))
+                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
+                    @Override
+                    public long extractAscendingTimestamp(String s) {
+                        return System.currentTimeMillis();
+                    }
+                })
                 // parsing into a StreetLamp object
                 .flatMap(new EmberInputFilter.EmberParseLamp());
 
@@ -54,6 +78,12 @@ public class CityOfLight {
         // setting topic and processing the stream from light sensors
         KeyedStream<EmberInput.LumenData, String> lumenStream = env
                 .addSource(new FlinkKafkaConsumer010<>("lumen", new SimpleStringSchema(), properties))
+                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
+                    @Override
+                    public long extractAscendingTimestamp(String s) {
+                        return System.currentTimeMillis();
+                    }
+                })
                 // parsing into LumenData object
                 .flatMap(new EmberInputFilter.EmberParseLumen())
                 // keying by address
@@ -64,10 +94,17 @@ public class CityOfLight {
         // setting topic and processing the stream from traffic data API
         KeyedStream<EmberInput.TrafficData, String> trafficStream = env
                 .addSource(new FlinkKafkaConsumer010<>("traffic", new SimpleStringSchema(), properties))
+                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
+                    @Override
+                    public long extractAscendingTimestamp(String s) {
+                        return System.currentTimeMillis();
+                    }
+                })
                 // parsing into TrafficData object
                 .flatMap(new EmberInputFilter.EmberParseTraffic())
                 // keying by address
                 .keyBy(new EmberInputFilter.EmberTrafficAddressSelector());
+
 
 
 
@@ -176,9 +213,36 @@ public class CityOfLight {
         kafkaConfigAlert.setFlushOnCheckpoint(true);
 
 
+
+        Map<String, String> config = new HashMap<>();
+        // This instructs the sink to emit after every element, otherwise they would be buffered
+        config.put("bulk.flush.max.actions", "1");
+        config.put("cluster.name", "elasticsearch");
+
+        List<InetSocketAddress> transports = new ArrayList<>();
+        transports.add(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 9300));
+
+
+
         // DASHBOARD
-        // storing for visualization and triggers in InfluxDB
-        lampStream.addSink(new EmberAlert.EmberLampSink());
+        // storing for visualization and triggers in persistence level
+        lampStream.addSink(new ElasticsearchSink(config, transports, new ElasticsearchSinkFunction<EmberInput.StreetLamp>() {
+            public IndexRequest createIndexRequest(EmberInput.StreetLamp element) {
+                Map<String, EmberInput.StreetLamp> json = new HashMap<>();
+                json.put("street_lamp", element);
+
+                return Requests.indexRequest()
+                        .index("lamps")
+                        .type("data")
+                        .id(String.valueOf(element.getId()))
+                        .source(json);
+            }
+
+            @Override
+            public void process(EmberInput.StreetLamp element, RuntimeContext ctx, RequestIndexer indexer) {
+                indexer.add(createIndexRequest(element));
+            }
+        }));
         controlStream.addSink(new EmberAlert.EmberControlSink());
 
         System.out.println(env.getExecutionPlan());

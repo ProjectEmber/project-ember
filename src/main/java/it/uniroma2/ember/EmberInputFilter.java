@@ -155,7 +155,7 @@ public class EmberInputFilter {
         @Override
         public Iterable<String> select(EmberInput.StreetLamp streetLamp) {
             List<String> output = new ArrayList<String>();
-            String tag = streetLamp.isPowerOn() ? "on" : "off";
+            String tag = streetLamp.isPower_on() ? "on" : "off";
             output.add(tag);
             return output;
         }
