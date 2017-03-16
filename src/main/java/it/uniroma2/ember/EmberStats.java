@@ -183,11 +183,12 @@ public class EmberStats {
      */
     public static class LampConsumption {
 
-        private int id          = 0;
-        private int count       = 0;
-        private float hourMean  = 0;
-        private float dayMean   = 0;
-        private float weekMean  = 0;
+        private int id            = 0;
+        private int count         = 0;
+        private float consumption = 0;
+        private float hourMean    = 0;
+        private float dayMean     = 0;
+        private float weekMean    = 0;
         private String address;
 
 
@@ -201,6 +202,14 @@ public class EmberStats {
 
         public int getCount() {
             return count;
+        }
+
+        public float getConsumption() {
+            return consumption;
+        }
+
+        public void setConsumption(float consumption) {
+            this.consumption = consumption;
         }
 
         public void incrementCount() {
@@ -270,17 +279,21 @@ public class EmberStats {
             }
 
 
-            // update the mean every hour
-            currentConsumption.setHourMean(currentConsumption.getHourMean() + streetLamp.getConsumption());
-            currentConsumption.setDayMean(currentConsumption.getDayMean() + streetLamp.getConsumption());
-            currentConsumption.setWeekMean(currentConsumption.getWeekMean() + streetLamp.getConsumption());
+            // update the consumption level
+            currentConsumption.setConsumption(currentConsumption.getConsumption() + streetLamp.getConsumption());
 
-
-            // incrementing counter - every ten seconds if it is right
+            // incrementing counter - data generated every ten seconds
             currentConsumption.incrementCount();
 
-            // computing mean
-            // TODO calculate proper mean
+            // computing mean on the fly
+            currentConsumption.setHourMean(currentConsumption.getConsumption() /
+                                          (currentConsumption.getCount() / 360 + 1));
+
+            currentConsumption.setDayMean(currentConsumption.getConsumption() /
+                                         (currentConsumption.getCount() / 8640 + 1));
+
+            currentConsumption.setWeekMean(currentConsumption.getConsumption() /
+                                          (currentConsumption.getCount() / 60480 + 1));
 
             // updating the value state
             this.consumption.update(currentConsumption);
