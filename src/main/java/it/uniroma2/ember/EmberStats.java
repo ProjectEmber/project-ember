@@ -7,23 +7,14 @@ package it.uniroma2.ember;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
-import org.apache.flink.api.common.state.ListState;
-import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.hadoop.shaded.com.google.common.collect.Iterables;
-import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
 import org.apache.flink.streaming.api.functions.windowing.WindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
-import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.apache.flink.types.ListValue;
 import org.apache.flink.util.Collector;
 
 import java.util.ArrayList;
@@ -129,17 +120,17 @@ public class EmberStats {
 
             // using an aux class to compute the <value, lamp> array
             class Lamp implements Comparable<Lamp> {
-                final int value;
+                final long value;
                 final EmberInput.StreetLamp lamp;
 
-                Lamp(int value, EmberInput.StreetLamp lamp) {
+                Lamp(long value, EmberInput.StreetLamp lamp) {
                     this.value = value;
                     this.lamp = lamp;
                 }
 
                 @Override
                 public int compareTo(Lamp o) {
-                    return ((Lamp) o).value - this.value;
+                    return (int) (((Lamp) o).value - this.value);
                 }
             }
             // creating the auxiliary array

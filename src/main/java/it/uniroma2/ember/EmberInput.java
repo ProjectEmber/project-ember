@@ -26,8 +26,8 @@ public class EmberInput {
         private int consumption;
         private boolean power_on;
         private float level;
-        private int last_replacement;
-        private int sent;
+        private long last_replacement;
+        private long sent;
 
         public int getId() {
             return id;
@@ -73,19 +73,19 @@ public class EmberInput {
             this.level = level;
         }
 
-        public int getLast_replacement() {
+        public long getLast_replacement() {
             return last_replacement;
         }
 
-        public void setLast_replacement(int last_replacement) {
+        public void setLast_replacement(long last_replacement) {
             this.last_replacement = last_replacement;
         }
 
-        public int getSent() {
+        public long getSent() {
             return sent;
         }
 
-        public void setSent(int sent) {
+        public void setSent(long sent) {
             this.sent = sent;
         }
 
