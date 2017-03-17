@@ -270,36 +270,36 @@ public class EmberStats {
         public void flatMap(EmberInput.StreetLamp streetLamp, Collector<LampConsumption> collector) throws Exception {
 
 
-            LampConsumption currentConsumption = this.consumption.value();
+            LampConsumption curCon = this.consumption.value();
 
-            if (currentConsumption == null) {
-                currentConsumption = new LampConsumption();
-                currentConsumption.setId(streetLamp.getId());
-                currentConsumption.setAddress(streetLamp.getAddress());
+            if (curCon == null) {
+                curCon = new LampConsumption();
+                curCon.setId(streetLamp.getId());
+                curCon.setAddress(streetLamp.getAddress());
             }
 
 
             // update the consumption level
-            currentConsumption.setConsumption(currentConsumption.getConsumption() + streetLamp.getConsumption());
+            curCon.setConsumption(curCon.getConsumption() + streetLamp.getConsumption());
 
             // incrementing counter - data generated every ten seconds
-            currentConsumption.incrementCount();
+            curCon.incrementCount();
 
             // computing mean on the fly
-            currentConsumption.setHourMean(currentConsumption.getConsumption() /
-                                          (currentConsumption.getCount() / 360 + 1));
+            curCon.setHourMean(curCon.getConsumption() + (curCon.getConsumption() - curCon.getConsumption()) /
+                                                         (curCon.getCount() / 360 + 1));
 
-            currentConsumption.setDayMean(currentConsumption.getConsumption() /
-                                         (currentConsumption.getCount() / 8640 + 1));
+            curCon.setDayMean(curCon.getConsumption()  + (curCon.getConsumption() - curCon.getConsumption()) /
+                                                         (curCon.getCount() / 8640 + 1));
 
-            currentConsumption.setWeekMean(currentConsumption.getConsumption() /
-                                          (currentConsumption.getCount() / 60480 + 1));
+            curCon.setWeekMean(curCon.getConsumption() + (curCon.getConsumption() - curCon.getConsumption()) /
+                                                         (curCon.getCount() / 60480 + 1));
 
             // updating the value state
-            this.consumption.update(currentConsumption);
+            this.consumption.update(curCon);
 
             // collecting results
-            collector.collect(currentConsumption);
+            collector.collect(curCon);
 
         }
 
