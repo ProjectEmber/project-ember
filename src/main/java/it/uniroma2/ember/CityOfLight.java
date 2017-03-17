@@ -6,6 +6,8 @@ package it.uniroma2.ember;
  */
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -23,10 +25,16 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Requests;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.index.query.QueryBuilders;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 
 public class CityOfLight {
@@ -222,12 +230,37 @@ public class CityOfLight {
         // storing for visualization and triggers in persistence level
         lampStream.addSink(new ElasticsearchSink(config, transports, new ElasticsearchSinkFunction<EmberInput.StreetLamp>() {
             public IndexRequest createIndexRequest(EmberInput.StreetLamp element) {
-                Map<String, EmberInput.StreetLamp> json = new HashMap<>();
-                json.put("street_lamp", element);
+                ObjectMapper mapper = new ObjectMapper();
+                byte[] json = new byte[0];
+                try {
+                    json = mapper.writeValueAsBytes(element);
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
+                Settings settings = Settings.settingsBuilder()
+                        .put("cluster.name","elasticsearch")
+                        .build();
+
+                TransportClient transportClient = null;
+                try {
+                    transportClient = TransportClient.builder().settings(settings).build()
+                            .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("127.0.0.1"),9300));
+                } catch (UnknownHostException e) {
+                    e.printStackTrace();
+                }
+
+                SearchResponse response = transportClient.prepareSearch("ember")
+                        .setTypes("lamp")
+                        .setQuery(QueryBuilders.termQuery("_id",String.valueOf(element.getId())))
+                        .execute()
+                        .actionGet();
+
+                System.out.println(response.toString());
 
                 return Requests.indexRequest()
-                        .index("lamps")
-                        .type("data")
+                        .index("ember")
+                        .type("lamp")
                         .id(String.valueOf(element.getId()))
                         .source(json);
             }
