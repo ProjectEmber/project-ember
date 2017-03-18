@@ -8,6 +8,7 @@ package it.uniroma2.ember;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.uniroma2.ember.kafka.EmberKafkaProducer;
 import it.uniroma2.ember.operators.join.EmberAggregateSensors;
 import it.uniroma2.ember.operators.join.EmberControlRoom;
 import it.uniroma2.ember.operators.parser.EmberParseLamp;
@@ -156,15 +157,7 @@ public class CityOfLight {
                 .flatMap(new EmberSerializeLamp());
 
         // using Apache Kafka as a sink for control output
-        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigControl = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
-                controlStreamSerialized,
-                "control",
-                new SimpleStringSchema(),
-                properties
-        );
-        // to guarantee an at-least-once delivery
-        kafkaConfigControl.setLogFailuresOnly(false);
-        kafkaConfigControl.setFlushOnCheckpoint(true);
+        EmberKafkaProducer.configuration(controlStreamSerialized, "control", properties);
 
 
 
@@ -179,14 +172,7 @@ public class CityOfLight {
                 .flatMap(new EmberSerializeRank());
 
         // using Apache Kafka as a sink for ranking output
-        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigRank = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
-                lifeSpanStreamSerialized,
-                "rank",
-                new SimpleStringSchema(),
-                properties
-        );
-        kafkaConfigRank.setLogFailuresOnly(false);
-        kafkaConfigRank.setFlushOnCheckpoint(true);
+        EmberKafkaProducer.configuration(lifeSpanStreamSerialized, "rank", properties);
 
 
         // 2. Mean Power Consumption
@@ -199,14 +185,7 @@ public class CityOfLight {
                 .flatMap(new EmberSerializeConsumption());
 
         // using Apache Kafka as a sink for consumption output
-        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigConsump = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
-                consumptionStreamSerialized,
-                "consumption",
-                new SimpleStringSchema(),
-                properties
-        );
-        kafkaConfigConsump.setLogFailuresOnly(false);
-        kafkaConfigConsump.setFlushOnCheckpoint(true);
+        EmberKafkaProducer.configuration(consumptionStreamSerialized, "consumption", properties);
 
 
 
@@ -217,14 +196,7 @@ public class CityOfLight {
                 .flatMap(new EmberSerializeAlert());
 
         // using Apache Kafka as a sink for alert output
-        FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigAlert = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
-                alertStream,
-                "alert",
-                new SimpleStringSchema(),
-                properties
-        );
-        kafkaConfigAlert.setLogFailuresOnly(false);
-        kafkaConfigAlert.setFlushOnCheckpoint(true);
+        EmberKafkaProducer.configuration(alertStream, "alert", properties);
 
 
 
