@@ -1,9 +1,6 @@
 package it.uniroma2.ember.stats;
 
 /**
- * Created by federico on 18/03/17.
- */
-/**
  * Implements a simple object to represent in a state list the lamp power consumption
  */
 public class LampConsumption {

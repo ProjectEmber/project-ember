@@ -1,9 +1,5 @@
 package it.uniroma2.ember.stats;
 
-/**
- * Created by federico on 18/03/17.
- */
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.util.Collector;

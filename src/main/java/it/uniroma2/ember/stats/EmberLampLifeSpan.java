@@ -1,11 +1,7 @@
 package it.uniroma2.ember.stats;
 
-/**
- * Created by federico on 18/03/17.
- */
-
-import it.uniroma2.ember.EmberInput;
 import it.uniroma2.ember.utils.StreetLamp;
+
 import org.apache.flink.hadoop.shaded.com.google.common.collect.Iterables;
 import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -24,7 +20,7 @@ public final class EmberLampLifeSpan implements AllWindowFunction<StreetLamp, Em
     public static final int MAX_LIFE_SPAN_SIZE = 10;
     /**
      * @param timeWindow the Window
-     * @param collection the Iterable<{@link it.uniroma2.ember.EmberInput.StreetLamp}>
+     * @param collection the Iterable<{@link StreetLamp}>
      * @param collector  the collector to handle the hand off between streams
      * @throws Exception
      */

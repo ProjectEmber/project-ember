@@ -8,6 +8,14 @@ package it.uniroma2.ember;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.uniroma2.ember.operators.join.EmberAggregateSensors;
+import it.uniroma2.ember.operators.join.EmberControlRoom;
+import it.uniroma2.ember.operators.parser.EmberParseLamp;
+import it.uniroma2.ember.operators.parser.EmberParseLumen;
+import it.uniroma2.ember.operators.parser.EmberParseTraffic;
+import it.uniroma2.ember.operators.selector.*;
+import it.uniroma2.ember.operators.serializer.EmberSerializeAlert;
+import it.uniroma2.ember.operators.serializer.EmberSerializeLamp;
 import it.uniroma2.ember.stats.*;
 import it.uniroma2.ember.utils.LumenData;
 import it.uniroma2.ember.utils.StreetLamp;
@@ -78,7 +86,7 @@ public class CityOfLight {
                     }
                 })
                 // parsing into a StreetLamp object
-                .flatMap(new EmberInputFilter.EmberParseLamp());
+                .flatMap(new EmberParseLamp());
 
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors
@@ -91,9 +99,9 @@ public class CityOfLight {
                     }
                 })
                 // parsing into LumenData object
-                .flatMap(new EmberInputFilter.EmberParseLumen())
+                .flatMap(new EmberParseLumen())
                 // keying by address
-                .keyBy(new EmberInputFilter.EmberLumenAddressSelector());
+                .keyBy(new EmberLumenAddressSelector());
 
 
         // TRAFFIC DATA
@@ -107,9 +115,9 @@ public class CityOfLight {
                     }
                 })
                 // parsing into TrafficData object
-                .flatMap(new EmberInputFilter.EmberParseTraffic())
+                .flatMap(new EmberParseTraffic())
                 // keying by address
-                .keyBy(new EmberInputFilter.EmberTrafficAddressSelector());
+                .keyBy(new EmberTrafficAddressSelector());
 
 
 
@@ -128,10 +136,10 @@ public class CityOfLight {
         // joining traffic and ambient streams in order to get the optimal light value
         DataStream<Tuple2<String,Tuple2<Float, Float>>> aggregatedSensorsStream = trafficMean
                 .join(ambientMean)
-                .where(new EmberSensorsAggregation.EmberTrafficMeanSelector())
-                .equalTo(new EmberSensorsAggregation.EmberLumenMeanSelector())
+                .where(new EmberTrafficMeanSelector())
+                .equalTo(new EmberLumenMeanSelector())
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
-                .apply(new EmberSensorsAggregation.EmberAggregateSensors());
+                .apply(new EmberAggregateSensors());
 
 
 
@@ -139,13 +147,13 @@ public class CityOfLight {
         // joining optimal light stream with lamp data
         DataStream<StreetLamp> controlStream = lampStream
                 .join(aggregatedSensorsStream)
-                .where(new EmberInputFilter.EmberLampAddressSelector())
-                .equalTo(new EmberSensorsAggregation.EmberSensorsAddressSelector())
+                .where(new EmberLampAddressSelector())
+                .equalTo(new EmberSensorsAddressSelector())
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
-                .apply(new EmberControlFeedback.EmberControlRoom());
+                .apply(new EmberControlRoom());
         // serializing into a JSON
         DataStream<String> controlStreamSerialized = controlStream
-                .flatMap(new EmberControlFeedback.EmberSerializeLamp());
+                .flatMap(new EmberSerializeLamp());
 
         // using Apache Kafka as a sink for control output
         FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigControl = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
@@ -183,7 +191,7 @@ public class CityOfLight {
 
         // 2. Mean Power Consumption
         DataStream<LampConsumption> consumptionStream = lampStream
-                .keyBy(new EmberInputFilter.EmberLampIdSelector())
+                .keyBy(new EmberLampIdSelector())
                 .flatMap(new EmberConsumptionMean());
         // state is queryable!
         // serializing into a JSON
@@ -205,8 +213,8 @@ public class CityOfLight {
         // ALERT
         // retrieving and serializing alert info
         DataStream<String> alertStream = env
-                .addSource(new EmberAlert.EmberInfluxSource())
-                .flatMap(new EmberAlert.EmberSerializeAlert());
+                .addSource()
+                .flatMap(new EmberSerializeAlert());
 
         // using Apache Kafka as a sink for alert output
         FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigAlert = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
@@ -274,7 +282,7 @@ public class CityOfLight {
                 indexer.add(createIndexRequest(element));
             }
         }));
-        controlStream.addSink(new EmberAlert.EmberControlSink());
+        controlStream.addSink();
 
         System.out.println(env.getExecutionPlan());
 

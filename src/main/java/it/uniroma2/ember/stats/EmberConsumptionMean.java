@@ -1,10 +1,7 @@
 package it.uniroma2.ember.stats;
 
-/**
- * Created by federico on 18/03/17.
- */
+import it.uniroma2.ember.utils.StreetLamp;
 
-import it.uniroma2.ember.EmberInput;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
@@ -14,7 +11,7 @@ import org.apache.flink.util.Collector;
 /**
  * Implements a RichFlatMap to correctly handle mean calculation using Flink managed state
  */
-public class EmberConsumptionMean extends RichFlatMapFunction<EmberInput.StreetLamp, LampConsumption> {
+public class EmberConsumptionMean extends RichFlatMapFunction<StreetLamp, LampConsumption> {
 
     private transient ValueState<LampConsumption> consumption;
 
@@ -22,12 +19,12 @@ public class EmberConsumptionMean extends RichFlatMapFunction<EmberInput.StreetL
      * Override flatMap from RichFlatMap
      * This method can be used to calculate on-the-fly in a stateful flavour the consumption means
      *
-     * @param streetLamp {@link it.uniroma2.ember.EmberInput.StreetLamp}
+     * @param streetLamp {@link StreetLamp}
      * @param collector the collector to handle the hand off
      * @throws Exception
      */
     @Override
-    public void flatMap(EmberInput.StreetLamp streetLamp, Collector<LampConsumption> collector) throws Exception {
+    public void flatMap(StreetLamp streetLamp, Collector<LampConsumption> collector) throws Exception {
 
 
         LampConsumption currentConsumption = this.consumption.value();

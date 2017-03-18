@@ -1,10 +1,5 @@
 package it.uniroma2.ember.stats;
 
-/**
- * Created by federico on 18/03/17.
- */
-
-import it.uniroma2.ember.EmberInput;
 import it.uniroma2.ember.utils.LumenData;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.functions.windowing.WindowFunction;

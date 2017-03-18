@@ -1,8 +1,5 @@
 package it.uniroma2.ember.utils;
 
-/**
- * Created by federico on 18/03/17.
- */
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
