@@ -8,6 +8,10 @@ package it.uniroma2.ember;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.uniroma2.ember.stats.*;
+import it.uniroma2.ember.utils.LumenData;
+import it.uniroma2.ember.utils.StreetLamp;
+import it.uniroma2.ember.utils.TrafficData;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -65,7 +69,7 @@ public class CityOfLight {
 
         // STREETLAMPS DATA PROCESSING
         // setting topic and processing the stream from streetlamps
-        DataStream<EmberInput.StreetLamp> lampStream = env
+        DataStream<StreetLamp> lampStream = env
                 .addSource(new FlinkKafkaConsumer010<>("lamp", new SimpleStringSchema(), properties))
                 .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
                     @Override
@@ -78,7 +82,7 @@ public class CityOfLight {
 
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors
-        KeyedStream<EmberInput.LumenData, String> lumenStream = env
+        KeyedStream<LumenData, String> lumenStream = env
                 .addSource(new FlinkKafkaConsumer010<>("lumen", new SimpleStringSchema(), properties))
                 .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
                     @Override
@@ -94,7 +98,7 @@ public class CityOfLight {
 
         // TRAFFIC DATA
         // setting topic and processing the stream from traffic data API
-        KeyedStream<EmberInput.TrafficData, String> trafficStream = env
+        KeyedStream<TrafficData, String> trafficStream = env
                 .addSource(new FlinkKafkaConsumer010<>("traffic", new SimpleStringSchema(), properties))
                 .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
                     @Override
@@ -114,12 +118,12 @@ public class CityOfLight {
         // computing mean value for ambient per street by a minute interval
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
-                .apply(new EmberStats.EmberAmbientMean());
+                .apply(new EmberAmbientMean());
 
         // computing mean value for traffic per street by a minute interval
         DataStream<Tuple2<String, Float>> trafficMean = trafficStream
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
-                .apply(new EmberStats.EmberTrafficMean());
+                .apply(new EmberTrafficMean());
 
         // joining traffic and ambient streams in order to get the optimal light value
         DataStream<Tuple2<String,Tuple2<Float, Float>>> aggregatedSensorsStream = trafficMean
@@ -133,7 +137,7 @@ public class CityOfLight {
 
         // CONTROL
         // joining optimal light stream with lamp data
-        DataStream<EmberInput.StreetLamp> controlStream = lampStream
+        DataStream<StreetLamp> controlStream = lampStream
                 .join(aggregatedSensorsStream)
                 .where(new EmberInputFilter.EmberLampAddressSelector())
                 .equalTo(new EmberSensorsAggregation.EmberSensorsAddressSelector())
@@ -159,12 +163,12 @@ public class CityOfLight {
         // MONITORING
         // to monitor Ember results we can rank the StreetLamps by:
         // 1. Life-Span
-        DataStream<EmberStats.EmberLampLifeSpanRank> lifeSpanStream = lampStream
+        DataStream<EmberLampLifeSpanRank> lifeSpanStream = lampStream
                 .windowAll(SlidingEventTimeWindows.of(Time.minutes(MONITOR_TIME_MINUTES_MIN), Time.minutes(MONITOR_TIME_MINUTES_MAX)))
-                .apply(new EmberStats.EmberLampLifeSpan());
+                .apply(new EmberLampLifeSpan());
         // serializing into a JSON
         DataStream<String> lifeSpanStreamSerialized = lifeSpanStream
-                .flatMap(new EmberStats.EmberSerializeRank());
+                .flatMap(new EmberSerializeRank());
 
         // using Apache Kafka as a sink for ranking output
         FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigRank = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
@@ -178,13 +182,13 @@ public class CityOfLight {
 
 
         // 2. Mean Power Consumption
-        DataStream<EmberStats.LampConsumption> consumptionStream = lampStream
+        DataStream<LampConsumption> consumptionStream = lampStream
                 .keyBy(new EmberInputFilter.EmberLampIdSelector())
-                .flatMap(new EmberStats.EmberConsumptionMean());
+                .flatMap(new EmberConsumptionMean());
         // state is queryable!
         // serializing into a JSON
         DataStream<String> consumptionStreamSerialized = consumptionStream
-                .flatMap(new EmberStats.EmberSerializeConsumption());
+                .flatMap(new EmberSerializeConsumption());
 
         // using Apache Kafka as a sink for consumption output
         FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfigConsump = FlinkKafkaProducer010.writeToKafkaWithTimestamps(
@@ -219,7 +223,7 @@ public class CityOfLight {
         Map<String, String> config = new HashMap<>();
         // This instructs the sink to emit after every element, otherwise they would be buffered
         config.put("bulk.flush.max.actions", "1");
-        config.put("cluster.name", "elasticsearch");
+        config.put("cluster.name", "embercluster");
 
         List<InetSocketAddress> transports = new ArrayList<>();
         transports.add(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 9300));
@@ -228,8 +232,8 @@ public class CityOfLight {
 
         // DASHBOARD
         // storing for visualization and triggers in persistence level
-        lampStream.addSink(new ElasticsearchSink(config, transports, new ElasticsearchSinkFunction<EmberInput.StreetLamp>() {
-            public IndexRequest createIndexRequest(EmberInput.StreetLamp element) {
+        lampStream.addSink(new ElasticsearchSink(config, transports, new ElasticsearchSinkFunction<StreetLamp>() {
+            public IndexRequest createIndexRequest(StreetLamp element) {
                 ObjectMapper mapper = new ObjectMapper();
                 byte[] json = new byte[0];
                 try {
@@ -239,7 +243,7 @@ public class CityOfLight {
                 }
 
                 Settings settings = Settings.settingsBuilder()
-                        .put("cluster.name","elasticsearch")
+                        .put("cluster.name","embercluster")
                         .build();
 
                 TransportClient transportClient = null;
@@ -266,7 +270,7 @@ public class CityOfLight {
             }
 
             @Override
-            public void process(EmberInput.StreetLamp element, RuntimeContext ctx, RequestIndexer indexer) {
+            public void process(StreetLamp element, RuntimeContext ctx, RequestIndexer indexer) {
                 indexer.add(createIndexRequest(element));
             }
         }));
