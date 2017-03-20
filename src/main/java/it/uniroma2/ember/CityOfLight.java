@@ -8,6 +8,8 @@ package it.uniroma2.ember;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.uniroma2.ember.elasticsearch.EmberElasticsearchAlertSource;
+import it.uniroma2.ember.elasticsearch.EmberElasticsearchSink;
 import it.uniroma2.ember.kafka.EmberKafkaProducer;
 import it.uniroma2.ember.operators.join.EmberAggregateSensors;
 import it.uniroma2.ember.operators.join.EmberControlRoom;
@@ -27,6 +29,7 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
@@ -75,6 +78,12 @@ public class CityOfLight {
 //        properties.setProperty("zookeeper.connect", "localhost:2181");
 
         properties.setProperty("group.id", "thegrid");
+
+        // preparing elasticsearch config
+        Map<String, Object> elasticConfig = new HashMap<>();
+        elasticConfig.put("cluster.address", "127.0.0.1");
+        elasticConfig.put("cluster.port", 9300);
+        elasticConfig.put("cluster.name", "embercluster");
 
         // STREETLAMPS DATA PROCESSING
         // setting topic and processing the stream from streetlamps
@@ -192,7 +201,7 @@ public class CityOfLight {
         // ALERT
         // retrieving and serializing alert info
         DataStream<String> alertStream = env
-                .addSource()
+                .addSource(new EmberElasticsearchAlertSource(elasticConfig))
                 .flatMap(new EmberSerializeAlert());
 
         // using Apache Kafka as a sink for alert output
@@ -200,61 +209,20 @@ public class CityOfLight {
 
 
 
-        Map<String, String> config = new HashMap<>();
+        /*Map<String, String> config = new HashMap<>();
         // This instructs the sink to emit after every element, otherwise they would be buffered
         config.put("bulk.flush.max.actions", "1");
         config.put("cluster.name", "embercluster");
 
         List<InetSocketAddress> transports = new ArrayList<>();
-        transports.add(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 9300));
+        transports.add(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 9300));*/
 
 
 
         // DASHBOARD
         // storing for visualization and triggers in persistence level
-        lampStream.addSink(new ElasticsearchSink(config, transports, new ElasticsearchSinkFunction<StreetLamp>() {
-            public IndexRequest createIndexRequest(StreetLamp element) {
-                ObjectMapper mapper = new ObjectMapper();
-                byte[] json = new byte[0];
-                try {
-                    json = mapper.writeValueAsBytes(element);
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-
-                Settings settings = Settings.settingsBuilder()
-                        .put("cluster.name","embercluster")
-                        .build();
-
-                TransportClient transportClient = null;
-                try {
-                    transportClient = TransportClient.builder().settings(settings).build()
-                            .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("127.0.0.1"),9300));
-                } catch (UnknownHostException e) {
-                    e.printStackTrace();
-                }
-
-                SearchResponse response = transportClient.prepareSearch("ember")
-                        .setTypes("lamp")
-                        .setQuery(QueryBuilders.termQuery("_id",String.valueOf(element.getId())))
-                        .execute()
-                        .actionGet();
-
-                System.out.println(response.toString());
-
-                return Requests.indexRequest()
-                        .index("ember")
-                        .type("lamp")
-                        .id(String.valueOf(element.getId()))
-                        .source(json);
-            }
-
-            @Override
-            public void process(StreetLamp element, RuntimeContext ctx, RequestIndexer indexer) {
-                indexer.add(createIndexRequest(element));
-            }
-        }));
-        controlStream.addSink();
+        lampStream.addSink((SinkFunction<StreetLamp>) new EmberElasticsearchSink("ember", "lamp", elasticConfig));
+        controlStream.addSink((SinkFunction<StreetLamp>) new EmberElasticsearchSink("ember", "control", elasticConfig));
 
         System.out.println(env.getExecutionPlan());
 
