@@ -1,5 +1,6 @@
 package it.uniroma2.ember.stats;
 
+import it.uniroma2.ember.utils.EmberLampLifeSpanRank;
 import it.uniroma2.ember.utils.StreetLamp;
 
 import org.apache.flink.hadoop.shaded.com.google.common.collect.Iterables;
@@ -62,7 +63,7 @@ public final class EmberLampLifeSpan implements AllWindowFunction<StreetLamp, Em
         for (Lamp lamp : lamps) {
             rank.incrementCount();
             rank.addLamp(lamp.lamp);
-            if (rank.count == MAX_LIFE_SPAN_SIZE)
+            if (rank.getCount() == MAX_LIFE_SPAN_SIZE)
                 break;
         }
 

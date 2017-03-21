@@ -1,5 +1,6 @@
 package it.uniroma2.ember.stats;
 
+import it.uniroma2.ember.utils.LampConsumption;
 import it.uniroma2.ember.utils.StreetLamp;
 
 import org.apache.flink.api.common.functions.RichFlatMapFunction;

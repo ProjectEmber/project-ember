@@ -1,4 +1,4 @@
-package it.uniroma2.ember.stats;
+package it.uniroma2.ember.utils;
 
 import it.uniroma2.ember.utils.StreetLamp;
 
@@ -10,7 +10,7 @@ import java.util.List;
  */
 public class EmberLampLifeSpanRank {
 
-    protected int count = 0;
+    private int count = 0;
     private List<StreetLamp> lamps = new ArrayList<>();
 
     public void incrementCount() {
@@ -19,6 +19,10 @@ public class EmberLampLifeSpanRank {
 
     public void addLamp(StreetLamp streetLamp) {
         this.lamps.add(streetLamp);
+    }
+
+    public int getCount() {
+        return this.count;
     }
 
     public EmberLampLifeSpanRank() { /* */ }

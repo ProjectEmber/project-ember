@@ -1,6 +1,7 @@
 package it.uniroma2.ember.stats;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.uniroma2.ember.utils.EmberLampLifeSpanRank;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.util.Collector;
 
@@ -12,7 +13,7 @@ public final class EmberSerializeRank implements FlatMapFunction<EmberLampLifeSp
     /**
      * Override flatMap method from FlatMapFunction
      *
-     * @param lifeSpanRank, the {@link it.uniroma2.ember.stats.EmberLampLifeSpanRank} object to be parsed
+     * @param lifeSpanRank, the {@link EmberLampLifeSpanRank} object to be parsed
      * @param collector the Collector<String> to handle the control stream handoff
      */
     @Override

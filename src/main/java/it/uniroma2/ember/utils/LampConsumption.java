@@ -1,4 +1,4 @@
-package it.uniroma2.ember.stats;
+package it.uniroma2.ember.utils;
 
 /**
  * Implements a simple object to represent in a state list the lamp power consumption

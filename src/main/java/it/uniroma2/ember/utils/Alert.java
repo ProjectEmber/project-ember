@@ -48,6 +48,13 @@ public class Alert {
 
     public Alert() { /* */ }
 
+    public Alert(int id, String address, String model, String message) {
+        this.id = id;
+        this.address = address;
+        this.model = model;
+        this.message = message;
+    }
+
     public static String serializeAlert(Alert alert) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         return mapper.writeValueAsString(alert);
