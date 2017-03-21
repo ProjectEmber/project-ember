@@ -72,9 +72,6 @@ public class CityOfLight {
         // setting group id
         /* to be setted by config file eventually */
         properties.setProperty("bootstrap.servers", "localhost:9092");
-//        // only required for Kafka 0.8
-//        properties.setProperty("zookeeper.connect", "localhost:2181");
-
         properties.setProperty("group.id", "thegrid");
 
         // preparing elasticsearch config
@@ -199,28 +196,16 @@ public class CityOfLight {
         // ALERT
         // retrieving and serializing alert info
         DataStream<String> alertStream = env
-                .addSource(new EmberElasticsearchAlertSource(elasticConfig))
+                .addSource(new EmberElasticsearchAlertSource("ember", "lamp", elasticConfig))
                 .flatMap(new EmberSerializeAlert());
 
         // using Apache Kafka as a sink for alert output
         EmberKafkaProducer.configuration(alertStream, "alert", properties);
 
-
-
-        /*Map<String, String> config = new HashMap<>();
-        // This instructs the sink to emit after every element, otherwise they would be buffered
-        config.put("bulk.flush.max.actions", "1");
-        config.put("cluster.name", "embercluster");
-
-        List<InetSocketAddress> transports = new ArrayList<>();
-        transports.add(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 9300));*/
-
-
-
         // DASHBOARD
         // storing for visualization and triggers in persistence level
         lampStream.addSink((SinkFunction<StreetLamp>) new EmberElasticsearchSink("ember", "lamp", elasticConfig));
-        controlStream.addSink((SinkFunction<StreetLamp>) new EmberElasticsearchSink("ember", "control", elasticConfig));
+        // TODO: controlStream.addSink((SinkFunction<StreetLamp>) new EmberElasticsearchSink("ember", "control", elasticConfig));
 
         System.out.println(env.getExecutionPlan());
 

@@ -9,6 +9,11 @@ import java.io.IOException;
  */
 
 public class Alert {
+
+    public static String ErrorSent   = "[ lost connection with lamp, electrical failure ]";
+    public static String ErrorExpire = "[ lamp is out of expiration safety limits ]";
+    public static String ErrorLevels = "[ lamp is operating out of safety level bounds ]";
+
     private int id;
     private String address;
     private String model;

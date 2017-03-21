@@ -8,6 +8,7 @@ import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSinkFun
 import org.apache.flink.streaming.connectors.elasticsearch2.RequestIndexer;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
@@ -34,8 +35,7 @@ public class EmberElasticsearchSink implements ElasticsearchSinkFunction {
      * This method can be used to create an IndexRequest
      * @param element, the StreetLamp to store
      */
-    // TODO we need to update, not to index!
-    public IndexRequest createIndexRequest(StreetLamp element) {
+    public UpdateRequest createIndexRequest(StreetLamp element) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         byte[] json = new byte[0];
         try {
@@ -56,19 +56,26 @@ public class EmberElasticsearchSink implements ElasticsearchSinkFunction {
             e.printStackTrace();
         }
 
-        SearchResponse response = transportClient.prepareSearch(this.index)
+        /*SearchResponse response = transportClient.prepareSearch(this.index)
                 .setTypes(this.type)
                 .setQuery(QueryBuilders.termQuery("_id",String.valueOf(element.getId())))
                 .execute()
                 .actionGet();
 
-        System.out.println(response.toString());
+        System.out.println(response.toString());*/
 
-        return Requests.indexRequest()
+        // creating update request
+        return new UpdateRequest()
                 .index(this.index)
                 .type(this.type)
                 .id(String.valueOf(element.getId()))
                 .source(json);
+
+        /*return Requests.indexRequest()
+                .index(this.index)
+                .type(this.type)
+                .id(String.valueOf(element.getId()))
+                .source(json);*/
     }
 
     /**
@@ -78,7 +85,11 @@ public class EmberElasticsearchSink implements ElasticsearchSinkFunction {
      */
     @Override
     public void process(Object element, RuntimeContext runtimeContext, RequestIndexer indexer) {
-        indexer.add(createIndexRequest((StreetLamp) element));
+        try {
+            indexer.add(createIndexRequest((StreetLamp) element));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public EmberElasticsearchSink(String index, String type, Map<String, Object> config) {
