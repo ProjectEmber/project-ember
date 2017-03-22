@@ -58,7 +58,7 @@ public class CityOfLight {
     private final static long MONITOR_TIME_MINUTES_MAX = 60; // TODO by config
     private final static String CLUSTER_NAME = "embercluster"; // TODO by config
     private final static String CLUSTER_ADDRESS = "db.project-ember.city"; // TODO by config
-    private final static int CLUSTER_PORT = 9300; // TOOD by config
+    private final static int CLUSTER_PORT = 9300; // TODO by config
 
     public static void main(String[] argv) throws Exception {
 
@@ -77,12 +77,13 @@ public class CityOfLight {
         properties.setProperty("bootstrap.servers", "localhost:9092");
         properties.setProperty("group.id", "thegrid");
 
-        // preparing elasticsearch config
+        // preparing elasticsearch config for Elasticsearch API only
         Map<String, Object> elasticConfig = new HashMap<>();
         elasticConfig.put("cluster.address", CLUSTER_ADDRESS);
         elasticConfig.put("cluster.port", CLUSTER_PORT);
         elasticConfig.put("cluster.name", CLUSTER_NAME);
 
+        // preparing elasticsearch for Elasticsearch Connector
         Map<String,String> config = new HashMap<>();
         config.put("cluster.name", CLUSTER_NAME);
 
@@ -213,9 +214,10 @@ public class CityOfLight {
 
         // DASHBOARD
         // storing for visualization and triggers in persistence level
-        lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction("ember", "lamp")));
+        lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction()));
         // TODO: lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction("ember", "control")));
 
+        lampStream.print();
 
         System.out.println(env.getExecutionPlan());
 

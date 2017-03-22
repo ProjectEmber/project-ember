@@ -103,11 +103,11 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
 
                 // making comparison to decide which error occurred
                 if (lamp.getSent() <= Instant.now().getEpochSecond() - failureSeconds)
-                    alert.setMessage(alert.getMessage() + Alert.ErrorSent);
+                    alert.setMessage(alert.getMessage() + Alert.ERROR_SENT);
                 if (lamp.getLast_replacement() <= Instant.now().getEpochSecond() - replacementExp)
-                    alert.setMessage(alert.getMessage() + Alert.ErrorExpire);
+                    alert.setMessage(alert.getMessage() + Alert.ERROR_EXPIRE);
                 if (lamp.getLevel() < EmberControlRoom.LAMP_SECURITY_LEVEL || lamp.getLevel() > EmberControlRoom.TRAFFIC_MAJOR_LEVEL)
-                    alert.setMessage(alert.getMessage() + Alert.ErrorLevels);
+                    alert.setMessage(alert.getMessage() + Alert.ERROR_LEVEL);
 
                 // appending alert to list
                 alertList.add(alert);

@@ -117,4 +117,17 @@ public class StreetLamp {
         return gson.fromJson(json, StreetLamp.class);
     }
 
+    @Override
+    public String toString() {
+        return "StreetLamp{" +
+                "id=" + id +
+                ", address='" + address + '\'' +
+                ", model='" + model + '\'' +
+                ", consumption=" + consumption +
+                ", power_on=" + power_on +
+                ", level=" + level +
+                ", last_replacement=" + last_replacement +
+                ", sent=" + sent +
+                '}';
+    }
 }
