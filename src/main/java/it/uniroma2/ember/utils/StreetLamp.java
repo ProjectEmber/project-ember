@@ -1,6 +1,7 @@
 package it.uniroma2.ember.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 
 import java.io.IOException;
 
@@ -112,8 +113,8 @@ public class StreetLamp {
      * @return {@link StreetLamp} or null in case of error
      */
     public static StreetLamp parseStreetLamp(String json) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        return mapper.readValue(json, StreetLamp.class);
+        Gson gson = new Gson();
+        return gson.fromJson(json, StreetLamp.class);
     }
 
 }

@@ -2,6 +2,7 @@ package it.uniroma2.ember.utils;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 
 import java.io.IOException;
 
@@ -60,8 +61,8 @@ public class TrafficData {
      * @return {@link TrafficData} or null in case of error
      */
     public static TrafficData parseTrafficData(String json) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        return mapper.readValue(json, TrafficData.class);
+        Gson gson = new Gson();
+        return gson.fromJson(json, TrafficData.class);
 
     }
 

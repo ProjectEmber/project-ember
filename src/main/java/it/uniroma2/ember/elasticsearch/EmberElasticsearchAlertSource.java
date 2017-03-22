@@ -1,15 +1,18 @@
 package it.uniroma2.ember.elasticsearch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import it.uniroma2.ember.operators.join.EmberControlRoom;
 import it.uniroma2.ember.utils.Alert;
 import it.uniroma2.ember.utils.StreetLamp;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.AdminClient;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.query.*;
+import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.search.SearchHit;
 
 import java.net.InetAddress;
@@ -59,6 +62,11 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
         }
         assert transportClient != null;
 
+        try {
+            transportClient.admin().indices().prepareCreate("ember").get();
+        } catch (IndexAlreadyExistsException e) {
+        }
+
         // we assume that the level and power_on is always reached, if it is not
         // the local control unit will stop notify the system generating a 'timestamp' error
         //
@@ -89,8 +97,8 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
             String sourceAsString = hit.getSourceAsString();
             if (sourceAsString != null) {
                 // creating a new streetlamp and alert objects
-                ObjectMapper mapper = new ObjectMapper();
-                StreetLamp lamp = mapper.readValue(sourceAsString, StreetLamp.class);
+                Gson gson = new Gson();
+                StreetLamp lamp = gson.fromJson(sourceAsString, StreetLamp.class);
                 Alert alert = new Alert(lamp.getId(), lamp.getAddress(), lamp.getModel(), "");
 
                 // making comparison to decide which error occurred

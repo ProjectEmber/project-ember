@@ -9,7 +9,7 @@ package it.uniroma2.ember;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchAlertSource;
-import it.uniroma2.ember.elasticsearch.EmberElasticsearchSink;
+import it.uniroma2.ember.elasticsearch.EmberElasticsearchSinkFunction;
 import it.uniroma2.ember.kafka.EmberKafkaProducer;
 import it.uniroma2.ember.operators.join.EmberAggregateSensors;
 import it.uniroma2.ember.operators.join.EmberControlRoom;
@@ -56,6 +56,9 @@ public class CityOfLight {
     private final static long WINDOW_TIME_SEC  = 10;
     private final static long MONITOR_TIME_MINUTES_MIN = 1; // TODO by config
     private final static long MONITOR_TIME_MINUTES_MAX = 60; // TODO by config
+    private final static String CLUSTER_NAME = "embercluster"; // TODO by config
+    private final static String CLUSTER_ADDRESS = "db.project-ember.city"; // TODO by config
+    private final static int CLUSTER_PORT = 9300; // TOOD by config
 
     public static void main(String[] argv) throws Exception {
 
@@ -76,9 +79,15 @@ public class CityOfLight {
 
         // preparing elasticsearch config
         Map<String, Object> elasticConfig = new HashMap<>();
-        elasticConfig.put("cluster.address", "127.0.0.1");
-        elasticConfig.put("cluster.port", 9300);
-        elasticConfig.put("cluster.name", "embercluster");
+        elasticConfig.put("cluster.address", CLUSTER_ADDRESS);
+        elasticConfig.put("cluster.port", CLUSTER_PORT);
+        elasticConfig.put("cluster.name", CLUSTER_NAME);
+
+        Map<String,String> config = new HashMap<>();
+        config.put("cluster.name", CLUSTER_NAME);
+
+        List<InetSocketAddress> transports = new ArrayList<>();
+        transports.add(new InetSocketAddress(InetAddress.getByName(CLUSTER_ADDRESS), CLUSTER_PORT));
 
         // STREETLAMPS DATA PROCESSING
         // setting topic and processing the stream from streetlamps
@@ -204,8 +213,9 @@ public class CityOfLight {
 
         // DASHBOARD
         // storing for visualization and triggers in persistence level
-        lampStream.addSink((SinkFunction<StreetLamp>) new EmberElasticsearchSink("ember", "lamp", elasticConfig));
-        // TODO: controlStream.addSink((SinkFunction<StreetLamp>) new EmberElasticsearchSink("ember", "control", elasticConfig));
+        lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction("ember", "lamp")));
+        // TODO: lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction("ember", "control")));
+
 
         System.out.println(env.getExecutionPlan());
 
