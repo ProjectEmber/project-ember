@@ -188,62 +188,60 @@ public class CityOfLight {
         // - by lamp id selection
         // - by street aggregation
 
+        DataStream<Object> consumptionStreamHour = null;
+        DataStream<Object> consumptionStreamDay = null;
+        DataStream<Object> consumptionStreamWeek = null;
+
         if (!streetAggregation) {
             // AGGREGATION BY ID
             KeyedStream<StreetLamp, Integer> consumptionStreamById = lampStream
                     .keyBy(new EmberLampIdSelector());
 
             // 1 h window
-            DataStream<LampEMAConsumption> consumptionStreamHour = consumptionStreamById
+            consumptionStreamHour = consumptionStreamById
                     .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
                     .apply(new EmberEMAWindowMean());
 
             // 1 d window
-            DataStream<LampEMAConsumption> consumptionStreamDay = consumptionStreamById
+            consumptionStreamDay = consumptionStreamById
                     .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
                     .apply(new EmberEMAWindowMean());
 
             // 1 w window
-            DataStream<LampEMAConsumption> consumptionStreamWeek = consumptionStreamById
+            consumptionStreamWeek = consumptionStreamById
                     .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
                     .apply(new EmberEMAWindowMean());
 
-            // producing by kafka
-            EmberKafkaProducer.configuration(consumptionStreamHour.flatMap(new EmberSerializeEMAConsumption()),
-                    "consumption_hour", properties);
-            EmberKafkaProducer.configuration(consumptionStreamDay.flatMap(new EmberSerializeEMAConsumption()),
-                    "consumption_day", properties);
-            EmberKafkaProducer.configuration(consumptionStreamWeek.flatMap(new EmberSerializeEMAConsumption()),
-                    "consumption_week", properties);
 
         } else {
             // AGGREGATION BY STREET
             KeyedStream<StreetLamp, String> consumptionStreamByStreet = lampStream
                     .keyBy(new EmberLampAddressSelector());
             // 1 h window
-            DataStream<LampEMAConsumptionStreet> consumptionStreamHour = consumptionStreamByStreet
+            consumptionStreamHour = consumptionStreamByStreet
                     .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
                     .apply(new EmberEMAWindowMeanStreet());
 
             // 1 d window
-            DataStream<LampEMAConsumptionStreet> consumptionStreamDay = consumptionStreamByStreet
+            consumptionStreamDay = consumptionStreamByStreet
                     .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
                     .apply(new EmberEMAWindowMeanStreet());
 
             // 1 w window
-            DataStream<LampEMAConsumptionStreet> consumptionStreamWeek = consumptionStreamByStreet
+            consumptionStreamWeek = consumptionStreamByStreet
                     .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
                     .apply(new EmberEMAWindowMeanStreet());
 
-
-            // producing by kafka
-            EmberKafkaProducer.configuration(consumptionStreamHour.flatMap(new EmberSerializeEMAConsumptionStreet()),
-                    "consumption_hour", properties);
-            EmberKafkaProducer.configuration(consumptionStreamDay.flatMap(new EmberSerializeEMAConsumptionStreet()),
-                    "consumption_day", properties);
-            EmberKafkaProducer.configuration(consumptionStreamWeek.flatMap(new EmberSerializeEMAConsumptionStreet()),
-                    "consumption_week", properties);
         }
+
+        consumptionStreamHour.addSink(new ElasticsearchSink(config, transports,
+                new EmberElasticsearchSinkFunction("ember","consumption_hour_id")));
+
+        consumptionStreamDay.addSink(new ElasticsearchSink(config, transports,
+                new EmberElasticsearchSinkFunction("ember","consumption_day_id")));
+
+        consumptionStreamWeek.addSink(new ElasticsearchSink(config, transports,
+                new EmberElasticsearchSinkFunction("ember","consumption_week_id")));
 
 
         // ALERT

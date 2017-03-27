@@ -9,7 +9,7 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Requests;
 
 
-public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction<StreetLamp> {
+public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction<Object> {
 
     private String index = "";
     private String type = "";
@@ -19,7 +19,7 @@ public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction
      *
      * @param element, the StreetLamp to store
      */
-    private IndexRequest createIndexRequest(StreetLamp element) throws Exception {
+    private IndexRequest createIndexRequest(Object element) throws Exception {
 
         byte[] convertedElem = new ObjectMapper().writeValueAsBytes(element);
 
@@ -27,7 +27,6 @@ public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction
         return Requests.indexRequest()
                 .index(index)
                 .type(type)
-                .id(String.valueOf(element.getId()))
                 .source(convertedElem);
     }
 
@@ -37,7 +36,7 @@ public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction
      * @param indexer,        the IndexRequests processor
      */
     @Override
-    public void process(StreetLamp element, RuntimeContext runtimeContext, RequestIndexer indexer) {
+    public void process(Object element, RuntimeContext runtimeContext, RequestIndexer indexer) {
         try {
             indexer.add(createIndexRequest(element));
         } catch (Exception e) {
