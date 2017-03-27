@@ -7,6 +7,7 @@ package it.uniroma2.ember;
 
 
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchAlertSource;
+import it.uniroma2.ember.elasticsearch.EmberElasticsearchRankSinkFunction;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchSinkFunction;
 import it.uniroma2.ember.kafka.EmberKafkaProducer;
 import it.uniroma2.ember.operators.join.EmberAggregateSensors;
@@ -177,12 +178,9 @@ public class CityOfLight {
         DataStream<EmberLampLifeSpanRank> lifeSpanStream = lampStream
                 .windowAll(SlidingEventTimeWindows.of(Time.minutes(MONITOR_TIME_MINUTES_MIN), Time.minutes(MONITOR_TIME_MINUTES_MAX)))
                 .apply(new EmberLampLifeSpan());
-        // serializing into a JSON
-        DataStream<String> lifeSpanStreamSerialized = lifeSpanStream
-                .flatMap(new EmberSerializeRank());
-
-        // using Apache Kafka as a sink for ranking output
-        EmberKafkaProducer.configuration(lifeSpanStreamSerialized, "rank", properties);
+        // storing data in elasticsearch by rank position
+        lifeSpanStream.addSink(new ElasticsearchSink(config, transports,
+                new EmberElasticsearchRankSinkFunction("ember", "rank")));
 
 
         // 2. Mean Power Consumption

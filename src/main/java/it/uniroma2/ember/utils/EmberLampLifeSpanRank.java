@@ -25,5 +25,7 @@ public class EmberLampLifeSpanRank {
         return this.count;
     }
 
+    public List<StreetLamp> getLamps() { return this.lamps; }
+
     public EmberLampLifeSpanRank() { /* */ }
 }
