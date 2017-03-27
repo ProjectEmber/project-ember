@@ -31,9 +31,9 @@ import static org.elasticsearch.index.query.QueryBuilders.*;
  */
 public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
 
-    public static final long millisSleep    = 30 * 1000;
-    public static final long failureSeconds = 30 * 3;
-    public static final long replacementExp = 17000000;
+    public static final long SLEEP_MILLIS    = 30 * 1000;
+    public static final long FAILURE_SECONDS = 30 * 3;
+    public static final long REPLACEMENT_EXPIRATION = 17000000;
 
     private String index = "";
     private String typeLamp = "";
@@ -73,9 +73,9 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
         // for all elements in 'lamp' type
         BoolQueryBuilder failuresQuery = boolQuery()
                 // -> check if timestamp is too far from current (not responding) (~90 seconds)
-                .should(rangeQuery("sent").lt(Instant.now().getEpochSecond() - failureSeconds))
+                .should(rangeQuery("sent").lt(Instant.now().getEpochSecond() - FAILURE_SECONDS))
                 // -> check if the lamp is near expiration (~200 days)
-                .should(rangeQuery("last_replacement").lt(Instant.now().getEpochSecond() - replacementExp))
+                .should(rangeQuery("last_replacement").lt(Instant.now().getEpochSecond() - REPLACEMENT_EXPIRATION))
                 // -> check if level is out of security levels
                 .should(
                         boolQuery()
@@ -102,9 +102,9 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
                 Alert alert = new Alert(lamp.getId(), lamp.getAddress(), lamp.getModel(), "");
 
                 // making comparison to decide which error occurred
-                if (lamp.getSent() <= Instant.now().getEpochSecond() - failureSeconds)
+                if (lamp.getSent() <= Instant.now().getEpochSecond() - FAILURE_SECONDS)
                     alert.setMessage(alert.getMessage() + Alert.ERROR_SENT);
-                if (lamp.getLast_replacement() <= Instant.now().getEpochSecond() - replacementExp)
+                if (lamp.getLast_replacement() <= Instant.now().getEpochSecond() - REPLACEMENT_EXPIRATION)
                     alert.setMessage(alert.getMessage() + Alert.ERROR_EXPIRE);
                 if (lamp.getLevel() < EmberControlRoom.LAMP_SECURITY_LEVEL || lamp.getLevel() > EmberControlRoom.TRAFFIC_MAJOR_LEVEL)
                     alert.setMessage(alert.getMessage() + Alert.ERROR_LEVEL);
@@ -131,7 +131,7 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
             for (Alert al : alertQuery())
                 ctx.collect(al);
             // sleeping 30 seconds before creating new alert stream
-            Thread.sleep(millisSleep);
+            Thread.sleep(SLEEP_MILLIS);
         }
     }
 

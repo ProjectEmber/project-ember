@@ -6,8 +6,6 @@ package it.uniroma2.ember;
  */
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchAlertSource;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchSinkFunction;
 import it.uniroma2.ember.kafka.EmberKafkaProducer;
@@ -17,47 +15,40 @@ import it.uniroma2.ember.operators.parser.EmberParseLamp;
 import it.uniroma2.ember.operators.parser.EmberParseLumen;
 import it.uniroma2.ember.operators.parser.EmberParseTraffic;
 import it.uniroma2.ember.operators.selector.*;
-import it.uniroma2.ember.operators.serializer.EmberSerializeAlert;
-import it.uniroma2.ember.operators.serializer.EmberSerializeLamp;
+import it.uniroma2.ember.operators.serializer.*;
 import it.uniroma2.ember.stats.*;
 import it.uniroma2.ember.utils.*;
-import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSink;
-import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSinkFunction;
-import org.apache.flink.streaming.connectors.elasticsearch2.RequestIndexer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.Requests;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.index.query.QueryBuilders;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.*;
 
 public class CityOfLight {
 
     private final static long WINDOW_TIME_SEC  = 10;
+
+    private final static long WINDOW_CONSUMPTION_HOUR_MINUTES = 60;
+    private final static long WINDOW_CONSUMPTION_DAY_HOURS    = 24;
+    private final static long WINDOW_CONSUMPTION_WEEK_DAYS    = 7;
+
     private final static long MONITOR_TIME_MINUTES_MIN = 1; // TODO by config
     private final static long MONITOR_TIME_MINUTES_MAX = 60; // TODO by config
+
     private final static String CLUSTER_NAME = "embercluster"; // TODO by config
     private final static String CLUSTER_ADDRESS = "db.project-ember.city"; // TODO by config
+
     private final static int CLUSTER_PORT = 9300; // TODO by config
 
     public static void main(String[] argv) throws Exception {
@@ -67,7 +58,6 @@ public class CityOfLight {
                 .getExecutionEnvironment();
 
         env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
-
 
         // get input data
         Properties properties = new Properties();
@@ -89,6 +79,9 @@ public class CityOfLight {
 
         List<InetSocketAddress> transports = new ArrayList<>();
         transports.add(new InetSocketAddress(InetAddress.getByName(CLUSTER_ADDRESS), CLUSTER_PORT));
+
+        // ready other properties from configuration TODO by config
+        boolean streetAggregation = true;
 
         // STREETLAMPS DATA PROCESSING
         // setting topic and processing the stream from streetlamps
@@ -190,18 +183,55 @@ public class CityOfLight {
 
 
         // 2. Mean Power Consumption
-        DataStream<LampConsumption> consumptionStream = lampStream
-                .keyBy(new EmberLampIdSelector())
-                .flatMap(new EmberConsumptionMean());
-        // state is queryable!
-        // serializing into a JSON
-        DataStream<String> consumptionStreamSerialized = consumptionStream
-                .flatMap(new EmberSerializeConsumption());
+        // creating a keyed stream using global properties
+        // - by lamp id selection
+        // - by street aggregation
 
-        // using Apache Kafka as a sink for consumption output
-        EmberKafkaProducer.configuration(consumptionStreamSerialized, "consumption", properties);
-
-
+        if (!streetAggregation) {
+            // AGGREGATION BY ID
+            KeyedStream<StreetLamp, Integer> consumptionStreamById = lampStream
+                    .keyBy(new EmberLampIdSelector());
+            // 1 h window
+            DataStream<LampEMAConsumption> consumptionStreamHour = consumptionStreamById
+                    .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
+                    .apply(new EmberEMAWindowMean());
+            EmberKafkaProducer.configuration(consumptionStreamHour.flatMap(new EmberSerializeEMAConsumption()),
+                    "consumption_hour", properties);
+            // 1 d window
+            DataStream<LampEMAConsumption> consumptionStreamDay = consumptionStreamById
+                    .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
+                    .apply(new EmberEMAWindowMean());
+            EmberKafkaProducer.configuration(consumptionStreamDay.flatMap(new EmberSerializeEMAConsumption()),
+                    "consumption_day", properties);
+            // 1 w window
+            DataStream<LampEMAConsumption> consumptionStreamWeek = consumptionStreamById
+                    .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
+                    .apply(new EmberEMAWindowMean());
+            EmberKafkaProducer.configuration(consumptionStreamWeek.flatMap(new EmberSerializeEMAConsumption()),
+                    "consumption_week", properties);
+        } else {
+            // AGGREGATION BY STREET
+            KeyedStream<StreetLamp, String> consumptionStreamByStreet = lampStream
+                    .keyBy(new EmberLampAddressSelector());
+            // 1 h window
+            DataStream<LampEMAConsumptionStreet> consumptionStreamHour = consumptionStreamByStreet
+                    .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
+                    .apply(new EmberEMAWindowMeanStreet());
+            EmberKafkaProducer.configuration(consumptionStreamHour.flatMap(new EmberSerializeEMAConsumptionStreet()),
+                    "consumption_hour", properties);
+            // 1 d window
+            DataStream<LampEMAConsumptionStreet> consumptionStreamDay = consumptionStreamByStreet
+                    .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
+                    .apply(new EmberEMAWindowMeanStreet());
+            EmberKafkaProducer.configuration(consumptionStreamDay.flatMap(new EmberSerializeEMAConsumptionStreet()),
+                    "consumption_day", properties);
+            // 1 w window
+            DataStream<LampEMAConsumptionStreet> consumptionStreamWeek = consumptionStreamByStreet
+                    .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
+                    .apply(new EmberEMAWindowMeanStreet());
+            EmberKafkaProducer.configuration(consumptionStreamWeek.flatMap(new EmberSerializeEMAConsumptionStreet()),
+                    "consumption_week", properties);
+        }
 
         // ALERT
         // retrieving and serializing alert info

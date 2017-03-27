@@ -1,4 +1,4 @@
-package it.uniroma2.ember.stats;
+package it.uniroma2.ember.operators.serializer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.uniroma2.ember.utils.EmberLampLifeSpanRank;

@@ -14,7 +14,7 @@ public final class EmberTrafficMean implements WindowFunction<TrafficData, Tuple
     /**
      * @param key the key to calculate by (address in this section)
      * @param window the sliding window
-     * @param trafficData the Iterable<{@link it.uniroma2.ember.EmberInput.TrafficData}>
+     * @param trafficData the Iterable<{@link TrafficData}>
      * @param collector the collector to handle the hand off between streams
      * @throws Exception
      */
