@@ -191,24 +191,30 @@ public class CityOfLight {
             // AGGREGATION BY ID
             KeyedStream<StreetLamp, Integer> consumptionStreamById = lampStream
                     .keyBy(new EmberLampIdSelector());
+
             // 1 h window
             DataStream<LampEMAConsumption> consumptionStreamHour = consumptionStreamById
                     .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
                     .apply(new EmberEMAWindowMean());
-            EmberKafkaProducer.configuration(consumptionStreamHour.flatMap(new EmberSerializeEMAConsumption()),
-                    "consumption_hour", properties);
+
             // 1 d window
             DataStream<LampEMAConsumption> consumptionStreamDay = consumptionStreamById
                     .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
                     .apply(new EmberEMAWindowMean());
-            EmberKafkaProducer.configuration(consumptionStreamDay.flatMap(new EmberSerializeEMAConsumption()),
-                    "consumption_day", properties);
+
             // 1 w window
             DataStream<LampEMAConsumption> consumptionStreamWeek = consumptionStreamById
                     .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
                     .apply(new EmberEMAWindowMean());
+
+            // producing by kafka
+            EmberKafkaProducer.configuration(consumptionStreamHour.flatMap(new EmberSerializeEMAConsumption()),
+                    "consumption_hour", properties);
+            EmberKafkaProducer.configuration(consumptionStreamDay.flatMap(new EmberSerializeEMAConsumption()),
+                    "consumption_day", properties);
             EmberKafkaProducer.configuration(consumptionStreamWeek.flatMap(new EmberSerializeEMAConsumption()),
                     "consumption_week", properties);
+
         } else {
             // AGGREGATION BY STREET
             KeyedStream<StreetLamp, String> consumptionStreamByStreet = lampStream
@@ -217,21 +223,27 @@ public class CityOfLight {
             DataStream<LampEMAConsumptionStreet> consumptionStreamHour = consumptionStreamByStreet
                     .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
                     .apply(new EmberEMAWindowMeanStreet());
-            EmberKafkaProducer.configuration(consumptionStreamHour.flatMap(new EmberSerializeEMAConsumptionStreet()),
-                    "consumption_hour", properties);
+
             // 1 d window
             DataStream<LampEMAConsumptionStreet> consumptionStreamDay = consumptionStreamByStreet
                     .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
                     .apply(new EmberEMAWindowMeanStreet());
-            EmberKafkaProducer.configuration(consumptionStreamDay.flatMap(new EmberSerializeEMAConsumptionStreet()),
-                    "consumption_day", properties);
+
             // 1 w window
             DataStream<LampEMAConsumptionStreet> consumptionStreamWeek = consumptionStreamByStreet
                     .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
                     .apply(new EmberEMAWindowMeanStreet());
+
+
+            // producing by kafka
+            EmberKafkaProducer.configuration(consumptionStreamHour.flatMap(new EmberSerializeEMAConsumptionStreet()),
+                    "consumption_hour", properties);
+            EmberKafkaProducer.configuration(consumptionStreamDay.flatMap(new EmberSerializeEMAConsumptionStreet()),
+                    "consumption_day", properties);
             EmberKafkaProducer.configuration(consumptionStreamWeek.flatMap(new EmberSerializeEMAConsumptionStreet()),
                     "consumption_week", properties);
         }
+
 
         // ALERT
         // retrieving and serializing alert info
