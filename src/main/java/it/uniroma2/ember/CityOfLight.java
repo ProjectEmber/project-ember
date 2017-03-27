@@ -18,6 +18,7 @@ import it.uniroma2.ember.operators.selector.*;
 import it.uniroma2.ember.operators.serializer.*;
 import it.uniroma2.ember.stats.*;
 import it.uniroma2.ember.utils.*;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -51,6 +52,7 @@ public class CityOfLight {
 
     private final static int CLUSTER_PORT = 9300; // TODO by config
 
+    @SuppressWarnings("unchecked")
     public static void main(String[] argv) throws Exception {
 
         // set up the execution environment
@@ -192,56 +194,42 @@ public class CityOfLight {
         DataStream<Object> consumptionStreamDay = null;
         DataStream<Object> consumptionStreamWeek = null;
 
-        if (!streetAggregation) {
-            // AGGREGATION BY ID
-            KeyedStream<StreetLamp, Integer> consumptionStreamById = lampStream
-                    .keyBy(new EmberLampIdSelector());
+        // AGGREGATION by ID or STREET
+        // defining the key selector
+        KeySelector meanSelector = null;
+        if (streetAggregation)
+            meanSelector = new EmberLampAddressSelector();
+        else
+            meanSelector = new EmberLampIdSelector();
+        KeyedStream<Object, Object> consumptionStreamById = lampStream
+                .keyBy(meanSelector);
 
-            // 1 h window
-            consumptionStreamHour = consumptionStreamById
-                    .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
-                    .apply(new EmberEMAWindowMean());
+        // windowing the keyed stream by ...
+        // 1 h window
+        consumptionStreamHour = consumptionStreamById
+                .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
+                .apply(new EmberEMAWindowMean(streetAggregation));
 
-            // 1 d window
-            consumptionStreamDay = consumptionStreamById
-                    .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
-                    .apply(new EmberEMAWindowMean());
+        // 1 d window
+        consumptionStreamDay = consumptionStreamById
+                .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
+                .apply(new EmberEMAWindowMean(streetAggregation));
 
-            // 1 w window
-            consumptionStreamWeek = consumptionStreamById
-                    .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
-                    .apply(new EmberEMAWindowMean());
+        // 1 w window
+        consumptionStreamWeek = consumptionStreamById
+                .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
+                .apply(new EmberEMAWindowMean(streetAggregation));
 
-
-        } else {
-            // AGGREGATION BY STREET
-            KeyedStream<StreetLamp, String> consumptionStreamByStreet = lampStream
-                    .keyBy(new EmberLampAddressSelector());
-            // 1 h window
-            consumptionStreamHour = consumptionStreamByStreet
-                    .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
-                    .apply(new EmberEMAWindowMeanStreet());
-
-            // 1 d window
-            consumptionStreamDay = consumptionStreamByStreet
-                    .window(TumblingEventTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
-                    .apply(new EmberEMAWindowMeanStreet());
-
-            // 1 w window
-            consumptionStreamWeek = consumptionStreamByStreet
-                    .window(TumblingEventTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
-                    .apply(new EmberEMAWindowMeanStreet());
-
-        }
-
+        // storing data in elasticsearch
+        String emaType = (streetAggregation) ? "_street" : "_id";
         consumptionStreamHour.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_hour_id")));
+                new EmberElasticsearchSinkFunction("ember","consumption_hour" + emaType)));
 
         consumptionStreamDay.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_day_id")));
+                new EmberElasticsearchSinkFunction("ember","consumption_day" + emaType)));
 
         consumptionStreamWeek.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_week_id")));
+                new EmberElasticsearchSinkFunction("ember","consumption_week" + emaType)));
 
 
         // ALERT
