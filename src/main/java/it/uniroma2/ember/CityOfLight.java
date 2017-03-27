@@ -75,6 +75,7 @@ public class CityOfLight {
 
         // preparing elasticsearch for Elasticsearch Connector
         Map<String,String> config = new HashMap<>();
+        config.put("bulk.flush.max.actions","1");
         config.put("cluster.name", CLUSTER_NAME);
 
         List<InetSocketAddress> transports = new ArrayList<>();
@@ -256,10 +257,9 @@ public class CityOfLight {
 
         // DASHBOARD
         // storing for visualization and triggers in persistence level
-        lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction()));
-        // TODO: lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction("ember", "control")));
+        lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction("ember","lamp")));
 
-        lampStream.print();
+//        lampStream.print();
 
         System.out.println(env.getExecutionPlan());
 

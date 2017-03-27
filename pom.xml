@@ -124,6 +124,13 @@ under the License.
 			<artifactId>flink-connector-elasticsearch2_2.11</artifactId>
 			<version>1.2.0</version>
 		</dependency>
+
+		<!-- ElasticSearch Java API dependency -->
+		<dependency>
+			<groupId>org.elasticsearch</groupId>
+			<artifactId>elasticsearch</artifactId>
+			<version>2.4.4</version>
+		</dependency>
 	</dependencies>
 
 	<profiles>

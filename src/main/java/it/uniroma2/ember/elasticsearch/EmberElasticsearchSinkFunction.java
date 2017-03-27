@@ -1,15 +1,18 @@
 package it.uniroma2.ember.elasticsearch;
 
-import com.google.gson.Gson;
 import it.uniroma2.ember.utils.StreetLamp;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSinkFunction;
 import org.apache.flink.streaming.connectors.elasticsearch2.RequestIndexer;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Requests;
 
 
 public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction<StreetLamp> {
+
+    private String index = "";
+    private String type = "";
 
     /**
      * This method can be used to create an IndexRequest
@@ -18,17 +21,14 @@ public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction
      */
     private IndexRequest createIndexRequest(StreetLamp element) throws Exception {
 
-        Gson gson = new Gson();
-        String json = gson.toJson(element);
+        byte[] convertedElem = new ObjectMapper().writeValueAsBytes(element);
 
         // creating update request
-        String index = "ember";
-        String type = "lamp";
         return Requests.indexRequest()
                 .index(index)
                 .type(type)
                 .id(String.valueOf(element.getId()))
-                .source(json.getBytes());
+                .source(convertedElem);
     }
 
     /**
@@ -45,8 +45,8 @@ public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction
         }
     }
 
-//    public EmberElasticsearchSinkFunction(String index, String type) {
-//        this.index = index;
-//        this.type = type;
-//    }
+    public EmberElasticsearchSinkFunction(String index, String type) {
+        this.index = index;
+        this.type = type;
+    }
 }
