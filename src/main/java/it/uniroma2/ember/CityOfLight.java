@@ -67,7 +67,7 @@ public class CityOfLight {
 
         // setting group id
         /* to be setted by config file eventually */
-        properties.setProperty("bootstrap.servers", "localhost:9092");
+        properties.setProperty("bootstrap.servers", "kafka.project-ember.city:9092");
         properties.setProperty("group.id", "thegrid");
 
         // preparing elasticsearch config for Elasticsearch API only
@@ -241,9 +241,10 @@ public class CityOfLight {
 
         // DASHBOARD
         // storing for visualization and triggers in persistence level
-        lampStream.addSink(new ElasticsearchSink(config, transports, new EmberElasticsearchSinkFunction("ember","lamp")));
+        lampStream.addSink(new ElasticsearchSink(config, transports,
+                new EmberElasticsearchSinkFunction("ember","lamp")));
 
-//        lampStream.print();
+        lampStream.print();
 
         System.out.println(env.getExecutionPlan());
 

@@ -1,5 +1,6 @@
 package it.uniroma2.ember.elasticsearch;
 
+import it.uniroma2.ember.utils.LampEMAConsumption;
 import it.uniroma2.ember.utils.StreetLamp;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSinkFunction;
@@ -22,12 +23,24 @@ public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction
     private IndexRequest createIndexRequest(Object element) throws Exception {
 
         byte[] convertedElem = new ObjectMapper().writeValueAsBytes(element);
-
-        // creating update request
-        return Requests.indexRequest()
-                .index(index)
-                .type(type)
-                .source(convertedElem);
+        if (element instanceof StreetLamp) {
+            StreetLamp elem = (StreetLamp) element;
+            // creating update request
+            return Requests.indexRequest()
+                    .index(index)
+                    .type(type)
+                    .id(String.valueOf(elem.getId()))
+                    .timestamp(String.valueOf(elem.getSent()))
+                    .source(convertedElem);
+        } else {
+            LampEMAConsumption elem = (LampEMAConsumption) element;
+            // creating update request
+            return Requests.indexRequest()
+                    .index(index)
+                    .type(type)
+                    .id(String.valueOf(elem.getId()))
+                    .source(convertedElem);
+        }
     }
 
     /**
