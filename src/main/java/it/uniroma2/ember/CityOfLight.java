@@ -9,6 +9,7 @@ package it.uniroma2.ember;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchAlertSource;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchRankSinkFunction;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchSinkFunction;
+import it.uniroma2.ember.kafka.EmberKafkaControlSink;
 import it.uniroma2.ember.kafka.EmberKafkaProducer;
 import it.uniroma2.ember.operators.join.EmberAggregateSensors;
 import it.uniroma2.ember.operators.join.EmberControlRoom;
@@ -163,12 +164,9 @@ public class CityOfLight {
                 .equalTo(new EmberSensorsAddressSelector())
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberControlRoom());
-        // serializing into a JSON
-        DataStream<String> controlStreamSerialized = controlStream
-                .flatMap(new EmberSerializeLamp());
 
-        // using Apache Kafka as a sink for control output
-        EmberKafkaProducer.configuration(controlStreamSerialized, "control", properties);
+        // using Apache Kafka as a sink for control output on multiple topics
+        EmberKafkaControlSink.configuration(controlStream, properties);
 
 
 
