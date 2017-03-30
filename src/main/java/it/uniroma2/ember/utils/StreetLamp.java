@@ -14,6 +14,7 @@ public class StreetLamp {
     private int id;
     private String address;
     private String model;
+    private String control_unit;
     private int consumption;
     private boolean power_on;
     private float level;
@@ -38,6 +39,14 @@ public class StreetLamp {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public String getControl_unit() {
+        return control_unit;
+    }
+
+    public void setControl_unit(String control_unit) {
+        this.control_unit = control_unit;
     }
 
     public int getConsumption() {
@@ -86,16 +95,18 @@ public class StreetLamp {
      * @param id unique identifier proper of the street lamp
      * @param address where the lamp is located
      * @param model model of the light bulb
+     * @param control_unit the local control unit
      * @param consumption current consumption value (in Watt)
      * @param power_on boolean true if the lamp was on, false if it was off
      * @param level level of power of the light bulb
      * @param last_replacement timestamp of the last light bulb replacement
      * @param sent timestamp of the last update about the lamp
      */
-    public StreetLamp(int id, String address, String model, int consumption, boolean power_on, float level, int last_replacement, int sent) {
+    public StreetLamp(int id, String address, String model, String control_unit, int consumption, boolean power_on, float level, int last_replacement, int sent) {
         this.id = id;
         this.address = address;
         this.model = model;
+        this.control_unit = control_unit;
         this.consumption = consumption;
         this.power_on = power_on;
         this.level = level;

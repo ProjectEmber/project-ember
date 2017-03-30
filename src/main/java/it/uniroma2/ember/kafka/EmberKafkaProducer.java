@@ -14,7 +14,7 @@ public class EmberKafkaProducer {
 
     public static void configuration(DataStream<String> stream, String topic, Properties properties) {
 
-        // using Apache Kafka as a sink for ranking output
+        // using Apache Kafka as a sink for serialized generic output
         FlinkKafkaProducer010.FlinkKafkaProducer010Configuration kafkaConfig = FlinkKafkaProducer010
                 .writeToKafkaWithTimestamps(
                         stream,
