@@ -9,6 +9,8 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Requests;
 
+import java.time.Instant;
+
 
 public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction<Object> {
 
@@ -35,10 +37,11 @@ public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction
         } else {
             LampEMAConsumption elem = (LampEMAConsumption) element;
             // creating update request
+            // no id in this case to maintain a history for the consumption values
             return Requests.indexRequest()
                     .index(index)
                     .type(type)
-                    .id(String.valueOf(elem.getId()))
+                    .timestamp(String.valueOf(Instant.now().getEpochSecond()))
                     .source(convertedElem);
         }
     }
