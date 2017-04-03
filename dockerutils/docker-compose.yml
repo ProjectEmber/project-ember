@@ -19,3 +19,23 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+  flink-jobmanager:
+      image: melentye/flink:1.2.0
+      ports:
+        - "8081:8081"
+      expose:
+        - "6123"
+      command: jobmanager
+
+    flink-taskmanager:
+      image: melentye/flink:1.2.0
+      expose:
+        - "6121"
+        - "6122"
+      depends_on:
+        - flink-jobmanager
+      links:
+        - flink-jobmanager
+      command: taskmanager
+
