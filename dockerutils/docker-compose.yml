@@ -14,28 +14,30 @@ services:
     depends_on:
       - zookeeper
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: kafka.project-ember.city
+      KAFKA_ADVERTISED_HOST_NAME: 111.222.333.444 # change to match hostname
       KAFKA_ZOOKEEPER_CONNECT: zk:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
-  flink-jobmanager:
-      image: melentye/flink:1.2.0
-      ports:
-        - "8081:8081"
-      expose:
-        - "6123"
-      command: jobmanager
+  flink-master:
+     image: bde2020/flink-master
+     hostname: flink-master
+     container_name: flink-master
+     environment:
+        - INIT_DAEMON_STEP=setup_flink
+  #     - "constraint:node==<yourmasternode>"
+     ports:
+       - "8080:8080"
+       - "8081:8081"
 
-   flink-taskmanager:
-      image: melentye/flink:1.2.0
-      expose:
-        - "6121"
-        - "6122"
-      depends_on:
-        - flink-jobmanager
-      links:
-        - flink-jobmanager
-      command: taskmanager
+  flink-worker:
+    image: bde2020/flink-worker
+    hostname: flink-worker
+    container_name: flink-worker
+    environment:
+     - "FLINK_MASTER_PORT_6123_TCP_ADDR=flink-master"
+     #- "constraint:node==<yourworkernode>"
+    depends_on:
+      - "flink-master"
 
