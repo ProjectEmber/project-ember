@@ -28,7 +28,7 @@ services:
         - "6123"
       command: jobmanager
 
-    flink-taskmanager:
+   flink-taskmanager:
       image: melentye/flink:1.2.0
       expose:
         - "6121"
