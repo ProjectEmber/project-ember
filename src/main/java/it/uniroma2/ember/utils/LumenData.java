@@ -14,6 +14,7 @@ public class LumenData {
     private int id;
     private String address;
     private float ambient;
+    private long retrieved;
 
     public int getId() {
         return id;
@@ -35,15 +36,24 @@ public class LumenData {
         this.ambient = ambient;
     }
 
+    public long getRetrieved() {
+        return retrieved;
+    }
+
+    public void setRetrieved(long retrieved) {
+        this.retrieved = retrieved;
+    }
+
     /**
      * @param id unique identifier of light sensor (it is the same of the lamp)
      * @param address where the lamp is located
      * @param ambient luminosity level near the sensor
      */
-    public LumenData(int id, String address, float ambient) {
+    public LumenData(int id, String address, float ambient, long retrieved) {
         this.id = id;
-        this.address = address;
-        this.ambient = ambient;
+        this.address   = address;
+        this.ambient   = ambient;
+        this.retrieved = retrieved;
     }
 
     public LumenData() { /* dummy constructor for jackson parsing */ }

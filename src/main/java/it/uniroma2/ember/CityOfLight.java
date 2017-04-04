@@ -92,27 +92,27 @@ public class CityOfLight {
         // setting topic and processing the stream from streetlamps
         DataStream<StreetLamp> lampStream = env
                 .addSource(new FlinkKafkaConsumer010<>("lamp", new SimpleStringSchema(), properties))
-                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
-                    @Override
-                    public long extractAscendingTimestamp(String s) {
-                        return System.currentTimeMillis();
-                    }
-                })
                 // parsing into a StreetLamp object
-                .flatMap(new EmberParseLamp());
+                .flatMap(new EmberParseLamp())
+                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<StreetLamp>() {
+                    @Override
+                    public long extractAscendingTimestamp(StreetLamp lamp) {
+                        return lamp.getSent();
+                    }
+                });
 
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors
         KeyedStream<LumenData, String> lumenStream = env
                 .addSource(new FlinkKafkaConsumer010<>("lumen", new SimpleStringSchema(), properties))
-                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
-                    @Override
-                    public long extractAscendingTimestamp(String s) {
-                        return System.currentTimeMillis();
-                    }
-                })
                 // parsing into LumenData object
                 .flatMap(new EmberParseLumen())
+                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<LumenData>() {
+                    @Override
+                    public long extractAscendingTimestamp(LumenData lumen) {
+                        return lumen.getRetrieved();
+                    }
+                })
                 // keying by address
                 .keyBy(new EmberLumenAddressSelector());
 
@@ -121,14 +121,14 @@ public class CityOfLight {
         // setting topic and processing the stream from traffic data API
         KeyedStream<TrafficData, String> trafficStream = env
                 .addSource(new FlinkKafkaConsumer010<>("traffic", new SimpleStringSchema(), properties))
-                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<String>() {
-                    @Override
-                    public long extractAscendingTimestamp(String s) {
-                        return System.currentTimeMillis();
-                    }
-                })
                 // parsing into TrafficData object
                 .flatMap(new EmberParseTraffic())
+                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<TrafficData>() {
+                    @Override
+                    public long extractAscendingTimestamp(TrafficData traffic) {
+                        return traffic.getRetrieved();
+                    }
+                })
                 // keying by address
                 .keyBy(new EmberTrafficAddressSelector());
 
