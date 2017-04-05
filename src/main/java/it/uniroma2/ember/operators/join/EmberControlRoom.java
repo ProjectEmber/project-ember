@@ -14,17 +14,17 @@ import java.util.Objects;
 public final class EmberControlRoom implements JoinFunction<StreetLamp, Tuple2<String, Tuple2<Float,Float>>,StreetLamp> {
 
     // constants
-    public static final float LUMEN_POWER_THRESHOLD     = 10f;
-    public static final float LUMEN_CONTROL_THRESHOLD   = 0.2f;
+    private static final float LUMEN_POWER_THRESHOLD     = 10f;
+    private static final float LUMEN_CONTROL_THRESHOLD   = 0.2f;
 
-    public static final float LAMP_SQUARE_AREA          = 30f;
+    private static final float LAMP_SQUARE_AREA          = 30f;
     public static final float LAMP_SECURITY_LEVEL       =  5f;
 
     public static final float TRAFFIC_MAJOR_LEVEL       = 34f;
-    public static final float TRAFFIC_COLLECTOR_LEVEL   = 24f;
-    public static final float TRAFFIC_COLCTLOCAL_LEVEL  = 18f;
-    public static final float TRAFFIC_LOCAL_LEVEL       = 15f;
-    public static final float TRAFFIC_LOCALLOW_LEVEL    = 13f;
+    private static final float TRAFFIC_COLLECTOR_LEVEL   = 24f;
+    private static final float TRAFFIC_COLCTLOCAL_LEVEL  = 18f;
+    private static final float TRAFFIC_LOCAL_LEVEL       = 15f;
+    private static final float TRAFFIC_LOCALLOW_LEVEL    = 13f;
 
     // auxiliary variables
     private static Float lumen;

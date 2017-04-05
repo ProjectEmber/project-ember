@@ -35,4 +35,13 @@ public class LampEMAConsumption {
     }
 
     public LampEMAConsumption() { /* */ }
+
+    @Override
+    public String toString() {
+        return "LampEMAConsumption{" +
+                "id=" + id +
+                ", consumption=" + consumption +
+                ", address='" + address + '\'' +
+                '}';
+    }
 }

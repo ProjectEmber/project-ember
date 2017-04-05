@@ -14,7 +14,7 @@ services:
     depends_on:
       - zookeeper
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: 111.222.333.444 # change to match hostname
+      KAFKA_ADVERTISED_HOST_NAME: 10.220.244.218 # change to match hostname
       KAFKA_ZOOKEEPER_CONNECT: zk:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     volumes:
@@ -30,6 +30,7 @@ services:
      ports:
        - "8080:8080"
        - "8081:8081"
+     mem_limit: 2g
 
   flink-worker:
     image: bde2020/flink-worker
@@ -40,4 +41,5 @@ services:
   #    - "constraint:node==<yourworkernode>"
     depends_on:
       - "flink-master"
+    mem_limit: 2g
 
