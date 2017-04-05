@@ -2,7 +2,6 @@ package it.uniroma2.ember.kafka;
 
 import it.uniroma2.ember.utils.StreetLamp;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.streaming.util.serialization.KeyedSerializationSchema;
 import org.codehaus.jackson.map.ObjectMapper;

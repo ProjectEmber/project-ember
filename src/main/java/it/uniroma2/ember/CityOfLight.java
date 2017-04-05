@@ -21,28 +21,20 @@ import it.uniroma2.ember.operators.selector.*;
 import it.uniroma2.ember.operators.serializer.*;
 import it.uniroma2.ember.stats.*;
 import it.uniroma2.ember.utils.*;
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.OutputFormatSinkFunction;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
-import org.apache.flink.streaming.api.functions.windowing.FoldApplyWindowFunction;
-import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.streaming.api.windowing.triggers.ContinuousEventTimeTrigger;
-import org.apache.flink.streaming.api.windowing.triggers.Trigger;
-import org.apache.flink.streaming.api.windowing.windows.Window;
 import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSink;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 
-import javax.xml.crypto.Data;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.*;
@@ -51,9 +43,7 @@ public class CityOfLight {
 
     private final static long WINDOW_TIME_SEC  = 10;
 
-    private final static long WINDOW_CONSUMPTION_HOUR_MINUTES = 60;
-    private final static long WINDOW_CONSUMPTION_DAY_HOURS    = 24;
-    private final static long WINDOW_CONSUMPTION_WEEK_DAYS    = 7;
+    private final static long WINDOW_CONSUMPTION_HOUR_MINUTES = 24;
 
     private final static long MONITOR_TIME_MINUTES_MIN = 1; // TODO by config
     private final static long MONITOR_TIME_MINUTES_MAX = 60; // TODO by config
@@ -77,10 +67,9 @@ public class CityOfLight {
 
         // setting group id
         /* to be setted by config file eventually */
-        properties.setProperty("bootstrap.servers", "localhost:9092");
+        properties.setProperty("bootstrap.servers", "kafka.project-ember.city:9092");
         //properties.setProperty("group.id", "thegrid");
         properties.setProperty("heartbeat.interval.ms", "10000");
-        properties.setProperty("max.poll.records", "150");
 
         // preparing elasticsearch config for Elasticsearch API only
         Map<String, Object> elasticConfig = new HashMap<>();
@@ -96,9 +85,6 @@ public class CityOfLight {
         List<InetSocketAddress> transports = new ArrayList<>();
         transports.add(new InetSocketAddress(InetAddress.getByName(CLUSTER_ADDRESS), CLUSTER_PORT));
 
-        // ready other properties from configuration TODO by config
-        boolean streetAggregation = true;
-
         // STREETLAMPS DATA PROCESSING
         // setting topic and processing the stream from streetlamps
         DataStream<StreetLamp> lampStream = env
@@ -112,6 +98,13 @@ public class CityOfLight {
                         return lamp.getSent() * 1000;
                     }
                 });
+        // keying by address
+        KeyedStream<StreetLamp, String> lampStreamByAddress = lampStream
+                .keyBy(new EmberLampAddressSelector());
+        // keying by id
+        KeyedStream<StreetLamp, Integer> lampStreamById = lampStream
+                .keyBy(new EmberLampIdSelector());
+
 
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors
@@ -147,23 +140,13 @@ public class CityOfLight {
                 .keyBy(new EmberTrafficAddressSelector());
 
 
-        KeyedStream<StreetLamp, String> lampStreamByAddress = lampStream
-                .keyBy(new EmberLampAddressSelector());
 
-
-
-        // AGGREGATION - LUMEN + TRAFFIC DATA
+        // AGGREGATION - LUMEN + TRAFFIC DATA & LAMP (buffering)
         // computing mean value for ambient per street by a minute interval
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberAmbientMean())
                 .name("ambientmean");
-
-
-        DataStream<StreetLamp> streetLampBuffer = lampStreamByAddress
-                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
-                .apply(new EmberEmptyApply())
-                .name("lampbuffer");
 
 
         // computing mean value for traffic per street by a minute interval
@@ -182,8 +165,20 @@ public class CityOfLight {
                 .apply(new EmberAggregateSensors());
 
 
+        // computing a buffer of the streetlamps to use them with aggregated sensors
+        DataStream<StreetLamp> streetLampBuffer = lampStreamByAddress
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
+                .apply(new EmberEmptyApply())
+                .name("lampbuffer");
+
 
         // CONTROL
+
+        // Dev notes:
+        //   in Apache Flink we use EventTime to process data from the source
+        //   but we must use ProcessingTime to perform transformations and operations
+        //   relative to the system processing time (such as aggregations in windows etc.)
+
         // joining optimal light stream with lamp data
         DataStream<StreetLamp> controlStream = streetLampBuffer
                 .join(aggregatedSensorsStream)
@@ -192,7 +187,6 @@ public class CityOfLight {
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*6)))
                 .apply(new EmberControlRoom());
 
-        controlStream.print();
         // using Apache Kafka as a sink for control output on multiple topics
         EmberKafkaControlSink.configuration(controlStream, properties);
 
@@ -210,54 +204,23 @@ public class CityOfLight {
 
 
         // 2. Mean Power Consumption
-        // creating a keyed stream using global properties
-        // - by lamp id selection
-        // - by street aggregation
-
-        DataStream<Object> consumptionStreamHour = null;
-        DataStream<Object> consumptionStreamDay = null;
-        DataStream<Object> consumptionStreamWeek = null;
-
-        // AGGREGATION by ID or STREET
-        // defining the key selector
-        KeySelector meanSelector = null;
-        if (streetAggregation)
-            meanSelector = new EmberLampAddressSelector();
-        else
-            meanSelector = new EmberLampIdSelector();
-        KeyedStream<Object, Object> consumptionStreamById = lampStream
-                .keyBy(meanSelector);
-
-        // windowing the keyed stream by ...
-        // 1 h window
-        consumptionStreamHour = consumptionStreamById
-                //.timeWindow(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES))
-                .window(TumblingProcessingTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
-                .apply(new EmberEMAWindowMean(streetAggregation))
-                .name("consumptionstream_hour");
-
-        // 1 d window
-        consumptionStreamDay = consumptionStreamById
-                .window(TumblingProcessingTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
-                .apply(new EmberEMAWindowMean(streetAggregation))
-                .name("consumptionstream_day");
-
-        // 1 w window
-        consumptionStreamWeek = consumptionStreamById
-                .window(TumblingProcessingTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
-                .apply(new EmberEMAWindowMean(streetAggregation))
-                .name("consumptionstream_week");
+        // 1 h window - by id
+        DataStream<LampEMAConsumption> consumptionStreamHourId = lampStreamById
+                .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
+                .apply(new EmberEMAWindowMean())
+                .name("consumptionstream_hour_street");
+        // 1 h window - by address aggregation
+        DataStream<LampEMAConsumptionStreet> consumptionStreamHourStreet = lampStreamByAddress
+                .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
+                .apply(new EmberEMAWindowMeanAddress())
+                .name("consumptionstream_hour_address");
 
         // storing data in elasticsearch
-        String emaType = (streetAggregation) ? "_street" : "_id";
-        consumptionStreamHour.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_hour" + emaType)));
-
-        consumptionStreamDay.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_day" + emaType)));
-
-        consumptionStreamWeek.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_week" + emaType)));
+        // (we will use the high integrated kibana features to visualize and retrieve consumption stats)
+        consumptionStreamHourId.addSink(new ElasticsearchSink(config, transports,
+                new EmberElasticsearchSinkFunction("ember","consumption_hour" + "_id")));
+        consumptionStreamHourStreet.addSink(new ElasticsearchSink(config, transports,
+                new EmberElasticsearchSinkFunction("ember","consumption_hour" + "_address")));
 
 
         // ALERT
@@ -269,13 +232,13 @@ public class CityOfLight {
         // using Apache Kafka as a sink for alert output
         EmberKafkaProducer.configuration(alertStream, "alert", properties);
 
+
         // DASHBOARD
         // storing for visualization and triggers in persistence level
         lampStream.addSink(new ElasticsearchSink(config, transports,
                 new EmberElasticsearchSinkFunction("ember","lamp")));
 
-        //lampStream.print();
-
+        // uncomment to print execution plan (flink.apache.org/visualizer)
         // System.out.println(env.getExecutionPlan());
 
         env.execute("EmberCityOfLight");

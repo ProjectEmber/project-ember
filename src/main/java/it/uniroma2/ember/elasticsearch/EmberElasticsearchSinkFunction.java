@@ -35,7 +35,6 @@ public class EmberElasticsearchSinkFunction implements ElasticsearchSinkFunction
                     .timestamp(String.valueOf(elem.getSent()))
                     .source(convertedElem);
         } else {
-            LampEMAConsumption elem = (LampEMAConsumption) element;
             // creating update request
             // no id in this case to maintain a history for the consumption values
             return Requests.indexRequest()
