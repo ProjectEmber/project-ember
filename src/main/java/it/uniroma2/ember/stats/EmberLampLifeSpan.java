@@ -1,5 +1,6 @@
 package it.uniroma2.ember.stats;
 
+import it.uniroma2.ember.CityOfLight;
 import it.uniroma2.ember.utils.EmberLampLifeSpanRank;
 import it.uniroma2.ember.utils.StreetLamp;
 
@@ -17,8 +18,6 @@ import java.util.Arrays;
  */
 public final class EmberLampLifeSpan implements AllWindowFunction<StreetLamp, EmberLampLifeSpanRank, TimeWindow> {
 
-    public static final int MAX_LIFE_SPAN_DAYS = 200; // TODO by config!
-    public static final int MAX_LIFE_SPAN_SIZE = 10;
     /**
      * @param timeWindow the Window
      * @param collection the Iterable<{@link StreetLamp}>
@@ -63,7 +62,7 @@ public final class EmberLampLifeSpan implements AllWindowFunction<StreetLamp, Em
         for (Lamp lamp : lamps) {
             rank.incrementCount();
             rank.addLamp(lamp.lamp);
-            if (rank.getCount() == MAX_LIFE_SPAN_SIZE)
+            if (rank.getCount() == CityOfLight.MONITOR_MAX_LEN)
                 break;
         }
 

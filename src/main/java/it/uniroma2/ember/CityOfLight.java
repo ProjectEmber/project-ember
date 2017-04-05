@@ -22,6 +22,7 @@ import it.uniroma2.ember.operators.serializer.*;
 import it.uniroma2.ember.stats.*;
 import it.uniroma2.ember.utils.*;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
@@ -45,16 +46,45 @@ public class CityOfLight {
 
     private final static long WINDOW_CONSUMPTION_HOUR_MINUTES = 24;
 
-    private final static long MONITOR_TIME_MINUTES_MIN = 1; // TODO by config
-    private final static long MONITOR_TIME_MINUTES_MAX = 60; // TODO by config
+    private static long MONITOR_TIME_MINUTES_MIN = 1;
+    private static long MONITOR_TIME_MINUTES_MAX = 60;
+    public static int MONITOR_MAX_LEN = 10;
+    public static int MAX_LIFE_SPAN_DAYS = 200;
 
-    private final static String CLUSTER_NAME = "embercluster"; // TODO by config
-    private final static String CLUSTER_ADDRESS = "db.project-ember.city"; // TODO by config
+    public static long ALERT_SOURCE_PERIOD_SECONDS = 30 * 1000;
+    public static long TO_FAILURE_SECONDS = 30 * 3;
 
-    private final static int CLUSTER_PORT = 9300; // TODO by config
+    private static String CLUSTER_NAME = "embercluster";
+    private static String CLUSTER_ADDRESS = "db.project-ember.city";
+
+    private static int CLUSTER_PORT = 9300;
 
     @SuppressWarnings("unchecked")
     public static void main(String[] argv) throws Exception {
+
+        if (argv.length == 2) {
+            // assuming a new property file to open
+            try {
+                ParameterTool parameters = ParameterTool.fromPropertiesFile(argv[1]);
+
+                MONITOR_TIME_MINUTES_MIN = parameters.getLong("lifespan.rank.min", 1);
+                MONITOR_TIME_MINUTES_MAX = parameters.getLong("lifespan.rank.max", 60);
+                MONITOR_MAX_LEN          = parameters.getInt("lifespan.rank.size", 10);
+                MAX_LIFE_SPAN_DAYS       = parameters.getInt("lifespan.days.max", 200);
+
+                ALERT_SOURCE_PERIOD_SECONDS = parameters.getLong("alerts.period.seconds", 30000);
+                TO_FAILURE_SECONDS          = parameters.getLong("alerts.electricalfailure.seconds", 90);
+
+                CLUSTER_NAME             = parameters.get("elasticsearch.cluster.name", "embercluster");
+                CLUSTER_ADDRESS          = parameters.get("elasticsearch.cluster.address", "localhost");
+                CLUSTER_PORT             = parameters.getInt("elasticsearch.cluster.port", 9300);
+
+            } catch (Exception e){
+                e.printStackTrace();
+                System.out.println("Error reading property file... exiting now!");
+                return;
+            }
+        }
 
         // set up the execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment
