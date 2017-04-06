@@ -44,7 +44,7 @@ public class CityOfLight {
 
     private final static long WINDOW_TIME_SEC  = 10;
 
-    private final static long WINDOW_CONSUMPTION_HOUR_MINUTES = 3;
+    private final static long WINDOW_CONSUMPTION_HOUR_MINUTES = 60;
 
     private static long MONITOR_TIME_MINUTES_MIN = 1;
     private static long MONITOR_TIME_MINUTES_MAX = 60;
@@ -60,6 +60,8 @@ public class CityOfLight {
 
     private static String KAFKA_ADDRESS = "kafka.project-ember.city";
     private static int KAFKA_PORT       = 9092;
+
+    private static boolean KAFKA_ALERT = true;
 
     @SuppressWarnings("unchecked")
     public static void main(String[] argv) throws Exception {
@@ -83,6 +85,8 @@ public class CityOfLight {
 
                 KAFKA_ADDRESS               = parameters.get("kafka.cluster.address", "localhost");
                 KAFKA_PORT                  = parameters.getInt("kafka.cluster.port", 9092);
+
+                KAFKA_ALERT                 = parameters.getBoolean("kafka.topic.alert", true);
 
             } catch (Exception e){
                 e.printStackTrace();
@@ -263,8 +267,13 @@ public class CityOfLight {
                 .addSource(new EmberElasticsearchAlertSource("ember", "lamp", elasticConfig))
                 .flatMap(new EmberSerializeAlert());
 
-        // using Apache Kafka as a sink for alert output
-        EmberKafkaProducer.configuration(alertStream, "alert", properties);
+        if (KAFKA_ALERT)
+            // using Apache Kafka as a sink for alert output
+            EmberKafkaProducer.configuration(alertStream, "alert", properties);
+        else
+            // using Elasticsearch to store alert sequence
+            alertStream.addSink(new ElasticsearchSink(config, transports,
+                    new EmberElasticsearchRankSinkFunction("ember", "alert")));
 
 
         // DASHBOARD

@@ -97,15 +97,26 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
                 // creating a new streetlamp and alert objects
                 Gson gson = new Gson();
                 StreetLamp lamp = gson.fromJson(sourceAsString, StreetLamp.class);
-                Alert alert = new Alert(lamp.getId(), lamp.getAddress(), lamp.getModel(), "");
+
+                Alert alert = new Alert();
+                alert.setId(lamp.getId());
+                alert.setAddress(lamp.getAddress());
+                alert.setModel(lamp.getModel());
+                alert.setRaised(Instant.now().getEpochSecond());
 
                 // making comparison to decide which error occurred
-                if (lamp.getSent() <= Instant.now().getEpochSecond() - CityOfLight.TO_FAILURE_SECONDS)
+                if (lamp.getSent() <= Instant.now().getEpochSecond() - CityOfLight.TO_FAILURE_SECONDS) {
                     alert.setMessage(alert.getMessage() + Alert.ERROR_SENT);
-                if (lamp.getLast_replacement() <= Instant.now().getEpochSecond() - TimeUnit.DAYS.toSeconds(CityOfLight.MAX_LIFE_SPAN_DAYS))
+                    alert.setElectrical_failure(true);
+                }
+                if (lamp.getLast_replacement() <= Instant.now().getEpochSecond() - TimeUnit.DAYS.toSeconds(CityOfLight.MAX_LIFE_SPAN_DAYS)) {
                     alert.setMessage(alert.getMessage() + Alert.ERROR_EXPIRE);
-                if (lamp.getLevel() < EmberControlRoom.LAMP_SECURITY_LEVEL || lamp.getLevel() > EmberControlRoom.TRAFFIC_MAJOR_LEVEL)
+                    alert.setExpiration(true);
+                }
+                if (lamp.getLevel() < EmberControlRoom.LAMP_SECURITY_LEVEL || lamp.getLevel() > EmberControlRoom.TRAFFIC_MAJOR_LEVEL) {
                     alert.setMessage(alert.getMessage() + Alert.ERROR_LEVEL);
+                    alert.setLumen_level_control(true);
+                }
 
                 // appending alert to list
                 alertList.add(alert);

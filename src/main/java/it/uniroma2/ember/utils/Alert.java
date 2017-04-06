@@ -17,7 +17,11 @@ public class Alert {
     private int id;
     private String address;
     private String model;
-    private String message;
+    private String message             = "";
+    private long raised;
+    private boolean electrical_failure  = false;
+    private boolean expiration          = false;
+    private boolean lumen_level_control = false;
 
     public int getId() {
         return id;
@@ -51,13 +55,44 @@ public class Alert {
         this.message = message;
     }
 
+    public long getRaised() { return this.raised; }
+
+    public void setRaised(long raised) { this.raised = raised; }
+
+    public boolean getElectrical_failure() {
+        return electrical_failure;
+    }
+
+    public void setElectrical_failure(boolean electrical_failure) {
+        this.electrical_failure = electrical_failure;
+    }
+
+    public boolean getExpiration() {
+        return expiration;
+    }
+
+    public void setExpiration(boolean expiration) {
+        this.expiration = expiration;
+    }
+
+    public boolean getLumen_level_control() {
+        return lumen_level_control;
+    }
+
+    public void setLumen_level_control(boolean lumen_level_control) {
+        this.lumen_level_control = lumen_level_control;
+    }
+
     public Alert() { /* */ }
 
-    public Alert(int id, String address, String model, String message) {
+    public Alert(int id, String address, String model, String message, boolean electrical, boolean expiration, boolean lumen_level) {
         this.id = id;
         this.address = address;
         this.model = model;
         this.message = message;
+        this.electrical_failure = electrical;
+        this.expiration = expiration;
+        this.lumen_level_control = lumen_level;
     }
 
     public static String serializeAlert(Alert alert) throws IOException {
