@@ -47,6 +47,11 @@ under the License.
 				<enabled>true</enabled>
 			</snapshots>
 		</repository>
+
+			<!--<repository>-->
+				<!--<id>otto-bintray</id>-->
+				<!--<url>https://dl.bintray.com/ottogroup/maven</url>-->
+			<!--</repository>-->
 	</repositories>
 	
 	<!-- 
@@ -131,6 +136,18 @@ under the License.
 			<artifactId>elasticsearch</artifactId>
 			<version>2.4.4</version>
 		</dependency>
+
+		<!--<dependency>-->
+			<!--<groupId>org.flinkspector</groupId>-->
+			<!--<artifactId>flinkspector-datastream_2.11</artifactId>-->
+			<!--<version>0.5</version>-->
+		<!--</dependency>-->
+		<!--<dependency>-->
+			<!--<groupId>org.junit.jupiter</groupId>-->
+			<!--<artifactId>junit-jupiter-api</artifactId>-->
+			<!--<version>RELEASE</version>-->
+		<!--</dependency>-->
+
 	</dependencies>
 
 	<profiles>
