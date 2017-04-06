@@ -48,16 +48,18 @@ public class CityOfLight {
 
     private static long MONITOR_TIME_MINUTES_MIN = 1;
     private static long MONITOR_TIME_MINUTES_MAX = 60;
-    public static int MONITOR_MAX_LEN = 10;
-    public static int MAX_LIFE_SPAN_DAYS = 200;
+    public static int MONITOR_MAX_LEN            = 10;
+    public static int MAX_LIFE_SPAN_DAYS         = 200;
 
     public static long ALERT_SOURCE_PERIOD_SECONDS = 30 * 1000;
-    public static long TO_FAILURE_SECONDS = 30 * 3;
+    public static long TO_FAILURE_SECONDS          = 30 * 3;
 
-    private static String CLUSTER_NAME = "embercluster";
-    private static String CLUSTER_ADDRESS = "db.project-ember.city";
+    private static String ELASTICSEARCH_NAME    = "embercluster";
+    private static String ELASTICSEARCH_ADDRESS = "db.project-ember.city";
+    private static int ELASTICSEARCH_PORT       = 9300;
 
-    private static int CLUSTER_PORT = 9300;
+    private static String KAFKA_ADDRESS = "kafka.project-ember.city";
+    private static int KAFKA_PORT       = 9092;
 
     @SuppressWarnings("unchecked")
     public static void main(String[] argv) throws Exception {
@@ -67,17 +69,20 @@ public class CityOfLight {
             try {
                 ParameterTool parameters = ParameterTool.fromPropertiesFile(argv[1]);
 
-                MONITOR_TIME_MINUTES_MIN = parameters.getLong("lifespan.rank.min", 1);
-                MONITOR_TIME_MINUTES_MAX = parameters.getLong("lifespan.rank.max", 60);
-                MONITOR_MAX_LEN          = parameters.getInt("lifespan.rank.size", 10);
-                MAX_LIFE_SPAN_DAYS       = parameters.getInt("lifespan.days.max", 200);
+                MONITOR_TIME_MINUTES_MIN    = parameters.getLong("lifespan.rank.min", 1);
+                MONITOR_TIME_MINUTES_MAX    = parameters.getLong("lifespan.rank.max", 60);
+                MONITOR_MAX_LEN             = parameters.getInt("lifespan.rank.size", 10);
+                MAX_LIFE_SPAN_DAYS          = parameters.getInt("lifespan.days.max", 200);
 
                 ALERT_SOURCE_PERIOD_SECONDS = parameters.getLong("alerts.period.seconds", 30000);
                 TO_FAILURE_SECONDS          = parameters.getLong("alerts.electricalfailure.seconds", 90);
 
-                CLUSTER_NAME             = parameters.get("elasticsearch.cluster.name", "embercluster");
-                CLUSTER_ADDRESS          = parameters.get("elasticsearch.cluster.address", "localhost");
-                CLUSTER_PORT             = parameters.getInt("elasticsearch.cluster.port", 9300);
+                ELASTICSEARCH_NAME          = parameters.get("elasticsearch.cluster.name", "embercluster");
+                ELASTICSEARCH_ADDRESS       = parameters.get("elasticsearch.cluster.address", "localhost");
+                ELASTICSEARCH_PORT          = parameters.getInt("elasticsearch.cluster.port", 9300);
+
+                KAFKA_ADDRESS               = parameters.get("kafka.cluster.address", "localhost");
+                KAFKA_PORT                  = parameters.getInt("kafka.cluster.port", 9092);
 
             } catch (Exception e){
                 e.printStackTrace();
@@ -97,23 +102,22 @@ public class CityOfLight {
 
         // setting group id
         /* to be setted by config file eventually */
-        properties.setProperty("bootstrap.servers", "kafka.project-ember.city:9092");
-        //properties.setProperty("group.id", "thegrid");
+        properties.setProperty("bootstrap.servers", KAFKA_ADDRESS + ":" + String.valueOf(KAFKA_PORT));
         properties.setProperty("heartbeat.interval.ms", "10000");
 
         // preparing elasticsearch config for Elasticsearch API only
         Map<String, Object> elasticConfig = new HashMap<>();
-        elasticConfig.put("cluster.address", CLUSTER_ADDRESS);
-        elasticConfig.put("cluster.port", CLUSTER_PORT);
-        elasticConfig.put("cluster.name", CLUSTER_NAME);
+        elasticConfig.put("cluster.address", ELASTICSEARCH_ADDRESS);
+        elasticConfig.put("cluster.port", ELASTICSEARCH_PORT);
+        elasticConfig.put("cluster.name", ELASTICSEARCH_NAME);
 
         // preparing elasticsearch for Elasticsearch Connector
         Map<String,String> config = new HashMap<>();
         config.put("bulk.flush.max.actions","1");
-        config.put("cluster.name", CLUSTER_NAME);
+        config.put("cluster.name", ELASTICSEARCH_NAME);
 
         List<InetSocketAddress> transports = new ArrayList<>();
-        transports.add(new InetSocketAddress(InetAddress.getByName(CLUSTER_ADDRESS), CLUSTER_PORT));
+        transports.add(new InetSocketAddress(InetAddress.getByName(ELASTICSEARCH_ADDRESS), ELASTICSEARCH_PORT));
 
         // STREETLAMPS DATA PROCESSING
         // setting topic and processing the stream from streetlamps
