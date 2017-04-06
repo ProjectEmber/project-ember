@@ -44,7 +44,7 @@ public class CityOfLight {
 
     private final static long WINDOW_TIME_SEC  = 10;
 
-    private final static long WINDOW_CONSUMPTION_HOUR_MINUTES = 24;
+    private final static long WINDOW_CONSUMPTION_HOUR_MINUTES = 60;
 
     private static long MONITOR_TIME_MINUTES_MIN = 1;
     private static long MONITOR_TIME_MINUTES_MAX = 60;
