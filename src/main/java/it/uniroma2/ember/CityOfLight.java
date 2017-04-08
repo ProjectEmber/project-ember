@@ -282,7 +282,7 @@ public class CityOfLight {
                 new EmberElasticsearchSinkFunction("ember","lamp")));
 
         // uncomment to print execution plan (flink.apache.org/visualizer)
-        // System.out.println(env.getExecutionPlan());
+        System.out.println(env.getExecutionPlan());
 
         env.execute("EmberCityOfLight");
     }
