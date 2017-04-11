@@ -101,6 +101,8 @@ public class CityOfLight {
 
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
+        env.getConfig().setLatencyTrackingInterval(500);
+
         // get input data
         Properties properties = new Properties();
 
@@ -182,14 +184,14 @@ public class CityOfLight {
         // AGGREGATION - LUMEN + TRAFFIC DATA & LAMP (buffering)
         // computing mean value for ambient per street by a minute interval
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
-                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*2)))
                 .apply(new EmberAmbientMean())
                 .name("ambientmean");
 
 
         // computing mean value for traffic per street by a minute interval
         DataStream<Tuple2<String, Float>> trafficMean = trafficStream
-                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*2)))
                 .apply(new EmberTrafficMean())
                 .name("trafficmean");
 
@@ -224,7 +226,7 @@ public class CityOfLight {
                 .join(aggregatedSensorsStream)
                 .where(new EmberLampAddressSelector())
                 .equalTo(new EmberSensorsAddressSelector())
-                .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*6)))
+                .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*4)))
                 .apply(new EmberControlRoom());
 
         controlStream.print();

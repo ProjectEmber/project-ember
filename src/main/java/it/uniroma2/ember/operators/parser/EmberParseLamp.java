@@ -16,10 +16,11 @@ public final class EmberParseLamp extends RichFlatMapFunction<String, StreetLamp
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        super.open(parameters);
+//        super.open(parameters);
         this.counter = getRuntimeContext()
-        .getMetricGroup()
-        .counter("mycounter");
+                .getMetricGroup()
+                .addGroup("myGroup")
+                .counter("mycounter");
     }
 
     /**
