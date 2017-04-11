@@ -13,7 +13,7 @@ import it.uniroma2.ember.kafka.EmberKafkaControlSink;
 import it.uniroma2.ember.kafka.EmberKafkaProducer;
 import it.uniroma2.ember.operators.join.EmberAggregateSensors;
 import it.uniroma2.ember.operators.join.EmberControlRoom;
-import it.uniroma2.ember.operators.join.EmberEmptyApply;
+import it.uniroma2.ember.operators.join.EmberLampBufferApply;
 import it.uniroma2.ember.operators.parser.EmberParseLamp;
 import it.uniroma2.ember.operators.parser.EmberParseLumen;
 import it.uniroma2.ember.operators.parser.EmberParseTraffic;
@@ -194,6 +194,15 @@ public class CityOfLight {
                 .name("trafficmean");
 
 
+        // computing a buffer of the streetlamps to use them with aggregated sensors
+        // (in the buffer we compute a mean of the data from the sensor to filter out
+        // duplicated records in case of network issues and to provide a punctual control output)
+        DataStream<StreetLamp> streetLampBuffer = lampStreamById
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*2)))
+                .apply(new EmberLampBufferApply())
+                .name("lampbuffer");
+
+
         // joining traffic and ambient streams in order to get the optimal light value
         DataStream<Tuple2<String,Tuple2<Float, Float>>> aggregatedSensorsStream = trafficMean
                 .join(ambientMean)
@@ -201,13 +210,6 @@ public class CityOfLight {
                 .equalTo(new EmberLumenMeanSelector())
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*3)))
                 .apply(new EmberAggregateSensors());
-
-
-        // computing a buffer of the streetlamps to use them with aggregated sensors
-        DataStream<StreetLamp> streetLampBuffer = lampStreamByAddress
-                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
-                .apply(new EmberEmptyApply())
-                .name("lampbuffer");
 
 
         // CONTROL
@@ -224,6 +226,8 @@ public class CityOfLight {
                 .equalTo(new EmberSensorsAddressSelector())
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*6)))
                 .apply(new EmberControlRoom());
+
+        controlStream.print();
 
         // using Apache Kafka as a sink for control output on multiple topics
         EmberKafkaControlSink.configuration(controlStream, properties);
@@ -246,7 +250,7 @@ public class CityOfLight {
         DataStream<LampEMAConsumption> consumptionStreamHourId = lampStreamById
                 .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
                 .apply(new EmberEMAWindowMean())
-                .name("consumptionstream_hour_street");
+                .name("consumptionstream_hour_id");
         // 1 h window - by address aggregation
         DataStream<LampEMAConsumptionStreet> consumptionStreamHourStreet = lampStreamByAddress
                 .window(TumblingEventTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))

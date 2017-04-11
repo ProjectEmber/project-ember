@@ -21,6 +21,10 @@ public class StreetLamp {
     private long last_replacement;
     private long sent;
 
+    public void setId(int id) {
+        this.id = id;
+    }
+
     public int getId() {
         return id;
     }
