@@ -77,10 +77,7 @@ public class CityOfLight {
 
         // setting group id
         /* to be setted by config file eventually */
-        properties.setProperty("bootstrap.servers", "localhost:9092");
-        //properties.setProperty("group.id", "thegrid");
-        properties.setProperty("heartbeat.interval.ms", "10000");
-        properties.setProperty("max.poll.records", "150");
+        properties.setProperty("bootstrap.servers", "kafka.project-ember.city:9092");
 
         // preparing elasticsearch config for Elasticsearch API only
         Map<String, Object> elasticConfig = new HashMap<>();
@@ -160,7 +157,9 @@ public class CityOfLight {
                 .name("ambientmean");
 
 
-        DataStream<StreetLamp> streetLampBuffer = lampStreamByAddress
+        // computing mean over data from lamps to buffer and join later with sensors
+        DataStream<StreetLamp> streetLampBuffer = lampStream
+                .keyBy(new EmberLampIdSelector())
                 .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberEmptyApply())
                 .name("lampbuffer");
@@ -192,7 +191,13 @@ public class CityOfLight {
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*6)))
                 .apply(new EmberControlRoom());
 
-        controlStream.print();
+        DataStream<StreetLamp> controlStreamBuffered = controlStream
+                .keyBy(new EmberLampIdSelector())
+                .window(TumblingProcessingTimeWindows.of(Time.seconds(1)))
+                .apply(new EmberEmptyApply());
+
+        controlStreamBuffered.print();
+
         // using Apache Kafka as a sink for control output on multiple topics
         EmberKafkaControlSink.configuration(controlStream, properties);
 
@@ -209,55 +214,55 @@ public class CityOfLight {
                 new EmberElasticsearchRankSinkFunction("ember", "rank")));
 
 
-        // 2. Mean Power Consumption
-        // creating a keyed stream using global properties
-        // - by lamp id selection
-        // - by street aggregation
+//        // 2. Mean Power Consumption
+//        // creating a keyed stream using global properties
+//        // - by lamp id selection
+//        // - by street aggregation
+//
+//        DataStream<Object> consumptionStreamHour = null;
+//        DataStream<Object> consumptionStreamDay = null;
+//        DataStream<Object> consumptionStreamWeek = null;
+//
+//        // AGGREGATION by ID or STREET
+//        // defining the key selector
+//        KeySelector meanSelector = null;
+//        if (streetAggregation)
+//            meanSelector = new EmberLampAddressSelector();
+//        else
+//            meanSelector = new EmberLampIdSelector();
+//        KeyedStream<Object, Object> consumptionStreamById = lampStream
+//                .keyBy(meanSelector);
+//
+//        // windowing the keyed stream by ...
+//        // 1 h window
+//        consumptionStreamHour = consumptionStreamById
+//                //.timeWindow(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES))
+//                .window(TumblingProcessingTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
+//                .apply(new EmberEMAWindowMean(streetAggregation))
+//                .name("consumptionstream_hour");
+//
+//        // 1 d window
+//        consumptionStreamDay = consumptionStreamById
+//                .window(TumblingProcessingTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
+//                .apply(new EmberEMAWindowMean(streetAggregation))
+//                .name("consumptionstream_day");
+//
+//        // 1 w window
+//        consumptionStreamWeek = consumptionStreamById
+//                .window(TumblingProcessingTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
+//                .apply(new EmberEMAWindowMean(streetAggregation))
+//                .name("consumptionstream_week");
 
-        DataStream<Object> consumptionStreamHour = null;
-        DataStream<Object> consumptionStreamDay = null;
-        DataStream<Object> consumptionStreamWeek = null;
-
-        // AGGREGATION by ID or STREET
-        // defining the key selector
-        KeySelector meanSelector = null;
-        if (streetAggregation)
-            meanSelector = new EmberLampAddressSelector();
-        else
-            meanSelector = new EmberLampIdSelector();
-        KeyedStream<Object, Object> consumptionStreamById = lampStream
-                .keyBy(meanSelector);
-
-        // windowing the keyed stream by ...
-        // 1 h window
-        consumptionStreamHour = consumptionStreamById
-                //.timeWindow(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES))
-                .window(TumblingProcessingTimeWindows.of(Time.minutes(WINDOW_CONSUMPTION_HOUR_MINUTES)))
-                .apply(new EmberEMAWindowMean(streetAggregation))
-                .name("consumptionstream_hour");
-
-        // 1 d window
-        consumptionStreamDay = consumptionStreamById
-                .window(TumblingProcessingTimeWindows.of(Time.hours(WINDOW_CONSUMPTION_DAY_HOURS)))
-                .apply(new EmberEMAWindowMean(streetAggregation))
-                .name("consumptionstream_day");
-
-        // 1 w window
-        consumptionStreamWeek = consumptionStreamById
-                .window(TumblingProcessingTimeWindows.of(Time.days(WINDOW_CONSUMPTION_WEEK_DAYS)))
-                .apply(new EmberEMAWindowMean(streetAggregation))
-                .name("consumptionstream_week");
-
-        // storing data in elasticsearch
-        String emaType = (streetAggregation) ? "_street" : "_id";
-        consumptionStreamHour.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_hour" + emaType)));
-
-        consumptionStreamDay.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_day" + emaType)));
-
-        consumptionStreamWeek.addSink(new ElasticsearchSink(config, transports,
-                new EmberElasticsearchSinkFunction("ember","consumption_week" + emaType)));
+//        // storing data in elasticsearch
+//        String emaType = (streetAggregation) ? "_street" : "_id";
+//        consumptionStreamHour.addSink(new ElasticsearchSink(config, transports,
+//                new EmberElasticsearchSinkFunction("ember","consumption_hour" + emaType)));
+//
+//        consumptionStreamDay.addSink(new ElasticsearchSink(config, transports,
+//                new EmberElasticsearchSinkFunction("ember","consumption_day" + emaType)));
+//
+//        consumptionStreamWeek.addSink(new ElasticsearchSink(config, transports,
+//                new EmberElasticsearchSinkFunction("ember","consumption_week" + emaType)));
 
 
         // ALERT
@@ -274,7 +279,6 @@ public class CityOfLight {
         lampStream.addSink(new ElasticsearchSink(config, transports,
                 new EmberElasticsearchSinkFunction("ember","lamp")));
 
-        //lampStream.print();
 
         // System.out.println(env.getExecutionPlan());
 
