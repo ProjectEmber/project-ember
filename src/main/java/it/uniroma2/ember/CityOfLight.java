@@ -57,7 +57,7 @@ public class CityOfLight {
     public static long TO_FAILURE_SECONDS          = 30 * 3;
 
     private static String ELASTICSEARCH_NAME    = "embercluster";
-    private static String ELASTICSEARCH_ADDRESS = "db.project-ember.city";
+    private static String ELASTICSEARCH_ADDRESS = "52.56.233.52";
     private static int ELASTICSEARCH_PORT       = 9300;
 
     private static String KAFKA_ADDRESS = "kafka.project-ember.city";
