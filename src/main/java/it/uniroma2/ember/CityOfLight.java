@@ -12,6 +12,7 @@ import it.uniroma2.ember.elasticsearch.EmberElasticsearchSinkFunction;
 import it.uniroma2.ember.kafka.EmberKafkaControlSink;
 import it.uniroma2.ember.kafka.EmberKafkaProducer;
 import it.uniroma2.ember.operators.join.EmberAggregateSensors;
+import it.uniroma2.ember.operators.join.EmberControlBufferApply;
 import it.uniroma2.ember.operators.join.EmberControlRoom;
 import it.uniroma2.ember.operators.join.EmberLampBufferApply;
 import it.uniroma2.ember.operators.parser.EmberParseLamp;
@@ -211,7 +212,6 @@ public class CityOfLight {
                 .apply(new EmberLampBufferApply())
                 .name("lampbuffer");
 
-//        streetLampBuffer.print();
 
         // joining traffic and ambient streams in order to get the optimal light value
         DataStream<Tuple2<String,Tuple2<Float, Float>>> aggregatedSensorsStream = trafficMean
@@ -237,10 +237,19 @@ public class CityOfLight {
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*6)))
                 .apply(new EmberControlRoom());
 
-        controlStream.print();
+        // buffering control to filter out duplicates (due to network failures and delays)
+        // and to produce an optimal average control - 1 s buffer
+        DataStream<StreetLamp> controlStreamBuffered = controlStream
+                .keyBy(new EmberLampIdSelector())
+                .window(TumblingProcessingTimeWindows.of(Time.milliseconds(1000)))
+                .apply(new EmberControlBufferApply());
+
+
+        // - uncomment to debug the output control -
+        // controlStreamBuffered.print();
 
         // using Apache Kafka as a sink for control output on multiple topics
-        EmberKafkaControlSink.configuration(controlStream, properties);
+        EmberKafkaControlSink.configuration(controlStreamBuffered, properties);
 
 
 
