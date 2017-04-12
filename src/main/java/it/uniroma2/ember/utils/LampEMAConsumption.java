@@ -8,6 +8,7 @@ public class LampEMAConsumption {
     private int id            = 0;
     private float consumption = 0;
     private String address;
+    private long computed     = 0;
 
 
     public int getId() {
@@ -32,6 +33,14 @@ public class LampEMAConsumption {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public long getComputed() {
+        return computed;
+    }
+
+    public void setComputed(long computed) {
+        this.computed = computed;
     }
 
     public LampEMAConsumption() { /* */ }

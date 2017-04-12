@@ -2,6 +2,7 @@ package it.uniroma2.ember.elasticsearch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+import it.uniroma2.ember.CityOfLight;
 import it.uniroma2.ember.operators.join.EmberControlRoom;
 import it.uniroma2.ember.utils.Alert;
 import it.uniroma2.ember.utils.StreetLamp;
@@ -21,6 +22,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.elasticsearch.index.query.QueryBuilders.*;
 
@@ -30,10 +32,6 @@ import static org.elasticsearch.index.query.QueryBuilders.*;
  *  stored in Elasticsearch.
  */
 public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
-
-    public static final long SLEEP_MILLIS    = 30 * 1000;
-    public static final long FAILURE_SECONDS = 30 * 3;
-    public static final long REPLACEMENT_EXPIRATION = 17000000;
 
     private String index = "";
     private String typeLamp = "";
@@ -72,10 +70,10 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
         //
         // for all elements in 'lamp' type
         BoolQueryBuilder failuresQuery = boolQuery()
-                // -> check if timestamp is too far from current (not responding) (~90 seconds)
-                .should(rangeQuery("sent").lt(Instant.now().getEpochSecond() - FAILURE_SECONDS))
+                // -> check if timestamp is too far from current (not responding) (~90 seconds by default)
+                .should(rangeQuery("sent").lt(Instant.now().getEpochSecond() - CityOfLight.TO_FAILURE_SECONDS))
                 // -> check if the lamp is near expiration (~200 days)
-                .should(rangeQuery("last_replacement").lt(Instant.now().getEpochSecond() - REPLACEMENT_EXPIRATION))
+                .should(rangeQuery("last_replacement").lt(Instant.now().getEpochSecond() - TimeUnit.DAYS.toSeconds(CityOfLight.MAX_LIFE_SPAN_DAYS)))
                 // -> check if level is out of security levels
                 .should(
                         boolQuery()
@@ -99,15 +97,26 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
                 // creating a new streetlamp and alert objects
                 Gson gson = new Gson();
                 StreetLamp lamp = gson.fromJson(sourceAsString, StreetLamp.class);
-                Alert alert = new Alert(lamp.getId(), lamp.getAddress(), lamp.getModel(), "");
+
+                Alert alert = new Alert();
+                alert.setId(lamp.getId());
+                alert.setAddress(lamp.getAddress());
+                alert.setModel(lamp.getModel());
+                alert.setRaised(Instant.now().getEpochSecond());
 
                 // making comparison to decide which error occurred
-                if (lamp.getSent() <= Instant.now().getEpochSecond() - FAILURE_SECONDS)
+                if (lamp.getSent() <= Instant.now().getEpochSecond() - CityOfLight.TO_FAILURE_SECONDS) {
                     alert.setMessage(alert.getMessage() + Alert.ERROR_SENT);
-                if (lamp.getLast_replacement() <= Instant.now().getEpochSecond() - REPLACEMENT_EXPIRATION)
+                    alert.setElectrical_failure(true);
+                }
+                if (lamp.getLast_replacement() <= Instant.now().getEpochSecond() - TimeUnit.DAYS.toSeconds(CityOfLight.MAX_LIFE_SPAN_DAYS)) {
                     alert.setMessage(alert.getMessage() + Alert.ERROR_EXPIRE);
-                if (lamp.getLevel() < EmberControlRoom.LAMP_SECURITY_LEVEL || lamp.getLevel() > EmberControlRoom.TRAFFIC_MAJOR_LEVEL)
+                    alert.setExpiration(true);
+                }
+                if (lamp.getLevel() < EmberControlRoom.LAMP_SECURITY_LEVEL || lamp.getLevel() > EmberControlRoom.TRAFFIC_MAJOR_LEVEL) {
                     alert.setMessage(alert.getMessage() + Alert.ERROR_LEVEL);
+                    alert.setLumen_level_control(true);
+                }
 
                 // appending alert to list
                 alertList.add(alert);
@@ -131,7 +140,7 @@ public class EmberElasticsearchAlertSource implements SourceFunction<Alert> {
             for (Alert al : alertQuery())
                 ctx.collect(al);
             // sleeping 30 seconds before creating new alert stream
-            Thread.sleep(SLEEP_MILLIS);
+            Thread.sleep(CityOfLight.ALERT_SOURCE_PERIOD_SECONDS);
         }
     }
 

@@ -8,6 +8,7 @@ public class LampEMAConsumptionStreet {
 
     private float consumption = 0;
     private String address;
+    private long computed;
 
     public float getConsumption() {
         return consumption;
@@ -23,6 +24,14 @@ public class LampEMAConsumptionStreet {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public long getComputed() {
+        return computed;
+    }
+
+    public void setComputed(long computed) {
+        this.computed = computed;
     }
 
     public LampEMAConsumptionStreet() { /* */ }

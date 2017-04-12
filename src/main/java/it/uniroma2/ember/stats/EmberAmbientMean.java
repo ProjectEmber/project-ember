@@ -14,7 +14,7 @@ public final class EmberAmbientMean implements WindowFunction<LumenData, Tuple2<
     /**
      * @param key the key to calculate by (address in this section)
      * @param window the sliding window
-     * @param sensors the Iterable<{@link it.uniroma2.ember.EmberInput.LumenData}>
+     * @param sensors the Iterable<{@link it.uniroma2.ember.utils.LumenData}>
      * @param collector the collector to handle the hand off between streams
      * @throws Exception
      */

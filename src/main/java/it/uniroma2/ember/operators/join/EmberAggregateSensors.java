@@ -13,10 +13,6 @@ public final class EmberAggregateSensors implements JoinFunction<Tuple2<String, 
 
     @Override
     public Tuple2<String, Tuple2<Float,Float>> join(Tuple2<String, Float> trafficData, Tuple2<String, Float> lumenData) throws Exception {
-        if (Objects.equals(lumenData.f0, trafficData.f0)) {
-            return new Tuple2<>(lumenData.f0, new Tuple2<>(lumenData.f1, trafficData.f1));
-        } else {
-            return new Tuple2<>("null", new Tuple2<>(null,null));
-        }
+        return new Tuple2<>(lumenData.f0, new Tuple2<>(lumenData.f1, trafficData.f1));
     }
 }

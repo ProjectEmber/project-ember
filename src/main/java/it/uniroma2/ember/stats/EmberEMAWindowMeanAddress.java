@@ -6,11 +6,13 @@ import org.apache.flink.streaming.api.functions.windowing.WindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
+import java.time.Instant;
+
 /**
  * This class implements a WindowFunction to use Exponential Moving Average
  * on a window of values.
  */
-public class EmberEMAWindowMeanStreet implements WindowFunction<Object, Object, String, TimeWindow> {
+public class EmberEMAWindowMeanAddress implements WindowFunction<StreetLamp, LampEMAConsumptionStreet, String, TimeWindow> {
 
     private static final float ALPHA = 0.85f;               // this configuration discount quickly oldest values
 
@@ -23,11 +25,12 @@ public class EmberEMAWindowMeanStreet implements WindowFunction<Object, Object, 
      * @throws Exception
      */
     @Override
-    public void apply(String key, TimeWindow window, Iterable<Object> lamps, Collector<Object> collector) throws Exception {
+    public void apply(String key, TimeWindow window, Iterable<StreetLamp> lamps, Collector<LampEMAConsumptionStreet> collector) throws Exception {
 
         // creating lamp consumption
         LampEMAConsumptionStreet streetConsumption = new LampEMAConsumptionStreet();
         streetConsumption.setAddress(key);
+        streetConsumption.setComputed(Instant.now().getEpochSecond());
 
         // iterating over lamps in window
         for (Object lamp : lamps) {
