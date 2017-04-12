@@ -21,6 +21,7 @@ import it.uniroma2.ember.operators.selector.*;
 import it.uniroma2.ember.operators.serializer.*;
 import it.uniroma2.ember.stats.*;
 import it.uniroma2.ember.utils.*;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -145,6 +146,12 @@ public class CityOfLight {
         KeyedStream<StreetLamp, Integer> lampStreamById = lampStream
                 .keyBy(new EmberLampIdSelector());
 
+//        lampStreamByAddress.reduce(new ReduceFunction<StreetLamp>() {
+//            @Override
+//            public StreetLamp reduce(StreetLamp value1, StreetLamp value2) throws Exception {
+//                return value2;
+//            }
+//        }).print();
 
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors
@@ -184,14 +191,14 @@ public class CityOfLight {
         // AGGREGATION - LUMEN + TRAFFIC DATA & LAMP (buffering)
         // computing mean value for ambient per street by a minute interval
         DataStream<Tuple2<String, Float>> ambientMean = lumenStream
-                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*2)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberAmbientMean())
                 .name("ambientmean");
 
 
         // computing mean value for traffic per street by a minute interval
         DataStream<Tuple2<String, Float>> trafficMean = trafficStream
-                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*2)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberTrafficMean())
                 .name("trafficmean");
 
@@ -200,10 +207,11 @@ public class CityOfLight {
         // (in the buffer we compute a mean of the data from the sensor to filter out
         // duplicated records in case of network issues and to provide a punctual control output)
         DataStream<StreetLamp> streetLampBuffer = lampStreamById
-                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*2)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_TIME_SEC)))
                 .apply(new EmberLampBufferApply())
                 .name("lampbuffer");
 
+//        streetLampBuffer.print();
 
         // joining traffic and ambient streams in order to get the optimal light value
         DataStream<Tuple2<String,Tuple2<Float, Float>>> aggregatedSensorsStream = trafficMean
@@ -226,7 +234,7 @@ public class CityOfLight {
                 .join(aggregatedSensorsStream)
                 .where(new EmberLampAddressSelector())
                 .equalTo(new EmberSensorsAddressSelector())
-                .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*4)))
+                .window(TumblingProcessingTimeWindows.of(Time.seconds(WINDOW_TIME_SEC*6)))
                 .apply(new EmberControlRoom());
 
         controlStream.print();
