@@ -4,6 +4,19 @@ This paper is about an academic project born to be an efficient solution for the
 \section{Frameworks and Tools}
 
 \section{Architecture overview}
+In this section we will cover how the system communicates between each of its components and modules and the assumptions we made to prototype and test the architecture. In \hyperref[fig:ember_architecture]{figure 1} a high-level architecture overview is provided. Before proceeding, we want to focus on the output from the real-time\footnote{We will define the system as "real-time" in this paper even if is not validated for such a control system, but it is capable of near real-time data streams processing} control system: it is produced into the MOM\footnote{Messages Oriented Middleware} and consumed by control units (how will be discussed later), closing a feedback loop. This behavior and the capabilities to maintain high-availability across the clusters make the system itself near to the features of an autonomic system.
+\begin{figure}
+\begin{center}
+	\includegraphics[scale=0.35]{img/ember_architecture}
+	\caption{Project Ember architecture overview}
+	\label{fig:ember_architecture}
+\end{center}
+	
+\end{figure}
+
+
+\subsection{Sensors network}
+First of all let we consider how the sensors network [...]
 
 % to insert a simple bar chart
 %\begin{tikzpicture}
