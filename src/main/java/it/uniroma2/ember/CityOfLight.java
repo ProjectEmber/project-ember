@@ -1,11 +1,5 @@
 package it.uniroma2.ember;
 
-/**
- * This is the routing topology for Apache Flink operators and transformations
- * Project Ember entrypoint
- */
-
-
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchAlertSource;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchRankSinkFunction;
 import it.uniroma2.ember.elasticsearch.EmberElasticsearchSinkFunction;
@@ -22,7 +16,6 @@ import it.uniroma2.ember.operators.selector.*;
 import it.uniroma2.ember.operators.serializer.*;
 import it.uniroma2.ember.stats.*;
 import it.uniroma2.ember.utils.*;
-import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -57,10 +50,10 @@ public class CityOfLight {
     public static long TO_FAILURE_SECONDS          = 30 * 3;
 
     private static String ELASTICSEARCH_NAME    = "embercluster";
-    private static String ELASTICSEARCH_ADDRESS = "52.56.233.52";
+    private static String ELASTICSEARCH_ADDRESS = "localhost";
     private static int ELASTICSEARCH_PORT       = 9300;
 
-    private static String KAFKA_ADDRESS = "kafka.project-ember.city";
+    private static String KAFKA_ADDRESS = "localhost";
     private static int KAFKA_PORT       = 9092;
 
     private static boolean KAFKA_ALERT = true;
@@ -147,12 +140,6 @@ public class CityOfLight {
         KeyedStream<StreetLamp, Integer> lampStreamById = lampStream
                 .keyBy(new EmberLampIdSelector());
 
-//        lampStreamByAddress.reduce(new ReduceFunction<StreetLamp>() {
-//            @Override
-//            public StreetLamp reduce(StreetLamp value1, StreetLamp value2) throws Exception {
-//                return value2;
-//            }
-//        }).print();
 
         // LUMEN SENSORS DATA PROCESSING
         // setting topic and processing the stream from light sensors

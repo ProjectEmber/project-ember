@@ -1,3 +1,7 @@
+# This is a very simple script to instantiate e 
+# Apache Kafka + Flink cluster (please note you have to
+# specify 'localhost' for kafka inside your source)
+
 version: '2'
 services:
   zookeeper:
