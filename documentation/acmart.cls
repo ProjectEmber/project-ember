@@ -888,8 +888,8 @@ Computing Machinery]
   \ifx\acmConference@shortname\@empty
     \gdef\acmConference@shortname{#2}%
   \fi}
-\acmConference[Conference'17]{ACM Conference}{July 2017}{Washington,
-  DC, USA}
+\acmConference[CINI Challenge 2017 - Smart Cities]{ACM Conference}{April 2017}{University of Tor Vergata,
+  Rome, Italy}
 \def\subtitle#1{\def\@subtitle{#1}}
 \subtitle{}
 \newcount\num@authorgroups
