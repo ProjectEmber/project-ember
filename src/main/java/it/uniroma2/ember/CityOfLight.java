@@ -71,7 +71,7 @@ public class CityOfLight {
                 MONITOR_MAX_LEN             = parameters.getInt("lifespan.rank.size", 10);
                 MAX_LIFE_SPAN_DAYS          = parameters.getInt("lifespan.days.max", 200);
 
-                ALERT_SOURCE_PERIOD_SECONDS = parameters.getLong("alerts.period.seconds", 30000);
+                ALERT_SOURCE_PERIOD_SECONDS = parameters.getLong("alerts.period.seconds", 30)*1000;
                 TO_FAILURE_SECONDS          = parameters.getLong("alerts.electricalfailure.seconds", 90);
 
                 ELASTICSEARCH_NAME          = parameters.get("elasticsearch.cluster.name", "embercluster");
