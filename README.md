@@ -35,5 +35,5 @@ The following table shows some configurations options:
 Disclaimer: this project is in its early release, and it is made to be available to a large panorama of institutions. If you want a particular configuration, please contact us or open an issue to ask for new features.
 
 ## Control Parameters
-Please, for a custom experience or to change the behavior of the control operator, feel free to change the parameters
+Please, for a custom experience or to change the behavior of the control operator for particular environments (as for example different regulations or parking silos), feel free to change the parameters
 in [EmberControlRoom.java](./src/main/java/it/uniroma2/ember/operators/join/EmberControlRoom.java) before building and deploying your solution.
