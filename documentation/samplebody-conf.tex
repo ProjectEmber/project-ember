@@ -130,7 +130,7 @@ Finally the output produced is a \texttt{DataStream<StreetLamp>} which is produc
 \subsection{Statistics}
 An important aspect of this project was to compute on the fly useful statistics on the smart city grid. We provided three different approaches for three different use cases.
 \subsection*{Expiration ranking}
-To produce an always updated rank of the ten lamps most in danger for end-of-life expiration, we used an \texttt{EventTimeSlidingWindow} which takes care to perform a per-hour rank upon the last replacement (as a timestamp) attribute from the lamps records.
+To produce an always updated rank of the ten (size is configurable) lamps most in danger for end-of-life expiration, we used an \texttt{EventTimeSlidingWindow} which takes care to perform a per-hour rank upon the last replacement (as a timestamp) attribute from the lamps records.
 \subsection*{Last hour consumption}
 The system is also capable to track on basis of a one-hour-step the consumption average, which is then stored into Elasticsearch for security reasons (if the system is terminated or must be restarted the persistence level will take trace of the history, losing just the last hour measurements). To perform a computation which is focused to give the most reasonable results, we used an exponential moving average:
 $$S_t = \alpha*Y_t + (1 - \alpha)*S_{t-1}$$
@@ -143,7 +143,7 @@ An important aspect of a project like Project Ember is to visualize data. Even i
 A useful feature of Project Ember is to provide a customizable preferential access for operators to the anomalies detection system. Once a configurable time, a query is performed to Elasticsearch cluster using its Apache Lucene based core to check on the entire lamps index for anomalies, such as out of range luminosity levels, electrical failures or lamp life expiration overflowed limits: no effort for the stream processing system. It must only handles those results and produce them via a custom sink on Elasticsearch or Kafka clusters, according the final user configuration: dashboard-based approach or not.
 
 \subsection{Configuration}
-Most of the parameters we quoted describing the stream processing and control system are configurable via a \texttt{.property} file. For a user guide please visit the project \href{https://github.com/projectember/project-ember}{repository}.
+Most of the parameters we quoted describing the stream processing and control system are configurable via a \texttt{.properties} file. For a user guide please visit the project \href{https://github.com/projectember/project-ember}{repository}.
 
 \begin{figure}[!b]
 \begin{center}

@@ -58,6 +58,8 @@ public class CityOfLight {
 
     private static boolean KAFKA_ALERT = true;
 
+
+
     @SuppressWarnings("unchecked")
     public static void main(String[] argv) throws Exception {
 
@@ -82,6 +84,8 @@ public class CityOfLight {
                 KAFKA_PORT                  = parameters.getInt("kafka.cluster.port", 9092);
 
                 KAFKA_ALERT                 = parameters.getBoolean("kafka.topic.alert", true);
+
+
 
             } catch (Exception e){
                 e.printStackTrace();
