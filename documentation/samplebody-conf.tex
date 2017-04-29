@@ -55,9 +55,9 @@ In this section we will introduce and cover the data stream processing system. A
 
 \begin{figure}
 \begin{center}
-	\includegraphics[scale=0.3]{img/ember_topology}
-	\caption{Project Ember topology}
-	\label{fig:ember_topology}
+	\includegraphics[scale=0.40]{img/ember_keyedstream}
+	\caption{An example of Project Ember operation flow}
+	\label{fig:ember_operation_flow}
 \end{center}
 \end{figure}
 
@@ -65,60 +65,50 @@ In this section we will introduce and cover the data stream processing system. A
 Apache Flink is based on the concept of \texttt{DataStream} (it also supports datasets but they are not used in this project), which is an immutable collection of data where the number of elements is unbounded. 
 DataStreams are produced by the \texttt{ExecutionEnvironment}, which is automatically created by the framework locally or distributed according to the cluster size defined in Flink configuration parameters. To create a data stream and to store it, the environment is bounded to a set of data \texttt{Sources} and \texttt{Sinks}, whose implementation will be discussed later.
 
-In this project we needed to perform a real-time computation on several kinds of data sources, so we used the \texttt{DataStream API} made available by Apache Flink framework. This decision allowed us to create streams grouped by some specific attribute of the elements (as a \texttt{Key}), to aggregate them into \texttt{TimeWindows} and to perform later a \texttt{Join} operation to compute results on specific time intervals. 
+In this project we needed to perform a real-time computation on several kinds of data sources, so we used the \texttt{DataStream API} made available by Apache Flink framework. This decision allowed us to create streams grouped by some specific attribute of the elements (as a \texttt{Key}), to aggregate them into \texttt{TimeWindows} and to perform later a \texttt{Join} operation to compute results on specific time intervals (\hyperref[fig:ember_keyedstream]{figure 2})
 
 Apache Flink is built to introduce very low latency for an high throughput and to allow the developers to create a natural flow control decoupling the logic behind the stream processing from the deployment itself. In other words, it is built to be efficient and to let developers concentrate their efforts in building the topology of the system regardless the machines the system will run upon.
 
 \subsection{Topology}
 As we said, Apache Flink supports parallelism of the stream processing according to task slots available per-machine of its cluster. Describing the topology we will assume a certain degree of parallelism which is not necessary to run the system locally.
 
-In \hyperref[fig:ember_topology]{figure 2} is represented the high level schema for our topology (exception made for the data sink which update lamp status in Elasticsearch). We can note that the streams produced are four, three coming from sensor sources attached to the execution environment (via Apache Kafka custom connectors), while the last one is a custom source that generates anomalies retrieved from queries to Elasticsearch lamps index and then perform a failure check, producing in output alerts messages.
+In \hyperref[fig:ember_topology]{figure 3} is represented the high level schema for our topology (exception made for the data sink which update lamp status in Elasticsearch). We can note that the streams produced are four, three coming from sensor sources attached to the execution environment (via Apache Kafka custom connectors), while the last one is a custom source that generates anomalies retrieved from queries to Elasticsearch lamps index and then perform a failure check, producing in output alerts messages.
 It is interesting to note the replication of the more CPU-consuming tasks, as well as the \texttt{KeyBy} of streams tuples by a specific key to perform transformations and forwarding to dedicated operators.
 
 As it is clear from the topology schema, we made use of time windows to buffer, aggregate and analyze specific time intervals of the streams. This introduced overhead increasing the time spent by one record into the system, but it allowed us to reduce the jitter on output messages and stabilize the entire control system: using windows we can easily compare datasets of the same dimensions and properties decoupling the arrival from the service process of our operators network.
 
+\begin{figure}
+\begin{center}
+	\includegraphics[scale=0.3]{img/ember_topology}
+	\caption{Project Ember topology}
+	\label{fig:ember_topology}
+\end{center}
+\end{figure}
+
+
 \subsection{Sources and Sinks}
 Sources are where the topology takes its inputs. A custom source can be attached to the topology via the execution environment calling \texttt{StreamExecutionEnvironment.addSource(sourceFunction)}. In particular a source function generates a \texttt{DataStream} that will be transformed and forwarded to the correct operators in the topology. We used sources from the Kafka connectors made available by Apache Flink to continuously consume from the topics \texttt{lamp, lumen, traffic} to read data from the sensors, and a custom source function iterating over queries made to Elasticsearch in order to recover anomalies found in lamps history. Respectively we used the \texttt{FlinkKafkaConsumer010} to receive messages routed via the Kafka cluster, and the customized \texttt{EmberElasticsearchAlertSource} which is powered by the tuple collector made available by the execution environment.
 
-Sinks are, on the other hand, the way Apache Flink consumes the data streams and forward them to external systems or print them out in a file. In this implementation we used two custom sinks, extending the built-in connectors: one is the \texttt{EmberKafkaProducer} and one is the \texttt{EmberElasticsearchSinkFunction}. In particular the latter is extended for each use case, from the simple lamp history update operations to the update of the ranks of the life-expiring lamps. The first producer, instead, is a \texttt{SinkFunction} which is extended in the \texttt{EmberKafkaControlSink}: in this case we used the feature of the Java Kafka API to select and create a topic into the MOM, that was particularly useful to route for each lamp its control output labeling each feedback with the lamp's own control unit identifier.
-
-
-\begin{figure}
-\begin{center}
-	\includegraphics[scale=0.30]{img/flink_windows}
-	\caption{Apache Flink tumbling windows}
-	\label{fig:flink_windows}
-\end{center}
-\end{figure}
+Sinks are, on the other hand, the way Apache Flink consumes the data streams and forward them to external systems or print them out in a file. In this implementation we used two custom sinks, extending the built-in connectors: one is the \texttt{EmberKafkaProducer} and one is the \texttt{EmberElasticsearchSinkFunction}. In particular the latter is extended for each use case, from the simple lamp history update operations to the update of the ranks of the life-expiring lamps. The first producer, instead, is a \texttt{SinkFunction} which is extended in the \texttt{EmberKafkaControlSink}: in this case we used the feature of the Java Kafka API to select and create a topic into the MOM, that was particularly useful to route for each lamp its control output labeling each feedback with the lamp's own control unit identifier. An high level schema is represented in \hyperref[fig:ember_kafkatopology]{figure 4}
 
 \begin{figure}[!b]
 \begin{center}
-	\includegraphics[scale=0.40]{img/ember_keyedstream}
-	\caption{An example of Project Ember operation flow}
-	\label{fig:ember_operation_flow}
+	\includegraphics[scale=0.40]{img/ember_kafkatopology}
+	\caption{Topics based messages routing}
+	\label{fig:ember_kafkatopology}
 \end{center}
 \end{figure}
+
 
 \subsection{Data aggregation}
 The large part of our stream processing system is based upon the class of \texttt{TumblingWindow} (\hyperref[fig:flink_windows]{figure 3}) and \texttt{KeyedStream}\footnote{Windows on keyed streams: https://ci.apache.org/projects/flink/flink-docs-release-1.2/dev/windows.html}. In fact, as we can see from our topology, the great part of the operators is composed of a keyed streams (grouped by an attribute of the records they collect) being windowed for an amount of time to compute over them a custom \texttt{JoinFunction}. There are exceptions, as the ranking, that we will cover later, and the alerting system and history-update by Elasticsearch sink whose don't require such a complexity and are simply buffered and iterated upon in order to collect new data streams. 
 
-Before going deeper in our system, let we see the sample Java-like pseudo-code used:
-\begin{lstlisting}[language=Java,basicstyle=\tiny]
-stream
-    .keyBy(...)      <-  required: "selector"
-    .window(...)     <-  required: "assigner"
-    .apply(...)      <-  required: "function"
-
-stream
-    .join(...)       <-  required: "datastream"
-    .where(...)      <-  required: "selector"
-    .equalTo(...)    <-  required: "selector"
-    .window(...)
-    .apply(...)
-\end{lstlisting}
 As we saw in the topology, we used a specific selector to partition the streams by ID, or address (\hyperref[fig:ember_operation_flow]{figure 4}).  Then we will buffer the streams and their partitions according to a \texttt{Watermark} assigned by the source, typically the timestamp associated with the event generation, into windows which size is configurable. It is important to note here that the developer must pay attention to specify a \texttt{EventTimeTumblingWindow} for events generated from the source and not already processed by the system, and \texttt{ProcessingTimeTumblingWindow} for the latter ones. In particular, for a window following a previous aggregation (as it is for the control operator) we will use the \texttt{ProcessingTime} to maintain the system coherent with its internal clock and preserving the original event generation time assigned by watermarks definition.
 
 Finally we can choose which operation perform calling the \texttt{apply()} function, for example a moving average computation by lamp identifier or lamp address. We can also perform a \texttt{join()} over a new stream using a particular window in order to aggregate different data records in a single tuple and made them available for further operations, as it is performed twice in the control system flow.
+
+\subsection{Project queries}
+We will cover in this section each of the queries upon whose the system was projected and built\footnote{Italian project specs and original statement available at \url{http://www.ce.uniroma2.it/courses/sdcc1617/progetti/SDCC1617_progetto1.pdf}}. 
 
 \subsection{Control system}
 The core of the control system is the flow which takes the sensors data streams, buffers and aggregates them twice (by their common selector and with data from lamps) and produces a control output which is sent to Kafka cluster to be consumed by control units.
@@ -143,19 +133,26 @@ giving preference to the last results from the hour-long buffer. The average is 
 \subsection*{Data history}
 An important aspect of a project like Project Ember is to visualize data. Even if we covered a lot how Elasticsearch works and how Kibana is integrated, we want to remember that their use and a continuously updated history for the lamps values, as well as last hour consumptions, let us build useful dashboards to monitor in (near) real-time the system overall status.
 
-\subsection{Alerts}
-A useful feature of Project Ember is to provide a customizable preferential access for operators to the anomalies detection system. Once a configurable time, a query is performed to Elasticsearch cluster using its Apache Lucene based core to check on the entire lamps index for anomalies, such as out of range luminosity levels, electrical failures or lamp life expiration overflowed limits: no effort for the stream processing system. It must only handles those results and produce them via a custom sink on Elasticsearch or Kafka clusters, according the final user configuration: dashboard-based approach or not.
+\subsection{Monitoring}
+A useful feature of Project Ember is to provide a customizable preferential access for operators to the anomalies detection system. Once a configurable time, a query is performed to Elasticsearch cluster using its Apache Lucene based core to check on the entire lamps index for anomalies, such as out of range luminosity levels, electrical failures or lamp life expiration overflowed limits. On Apache Flink cluster this stream is processed, analyzed and proper alerts messages are produced in a new stream according the query results. The latter handles the messages and produce them via a custom sink on Elasticsearch or Kafka clusters, according the final user configuration: dashboard-based approach or not.
+
+\begin{figure}
+\begin{center}
+	\includegraphics[scale=0.40]{img/ember_ha}
+	\caption{Apache Flink cluster using distributed runtime in high availability configuration}
+	\label{fig:ember_ha}
+\end{center}
+\end{figure}
+
+\subsection{Distributed runtime}
+The cluster where Apache Flink runs can be configured to operate under HA\footnote{High Availability} and with a distributed environment to ensure rebalancing of the operators amongst the cluster nodes: high level representation in \hyperref[fig:ember_ha]{figure 5}. 
+In particular, it is necessary to set up how the \texttt{JobManager} and the \texttt{TaskManagers} cooperate. As we have seen, Apache Flink supports rebalancing on all the available computational slots of the system: the manager node is the one responsible to upload the \texttt{.jar} and \texttt{.config} source files, reading the plan (produced by the Flink framework) and redistributing into the slaves the computational effort. It can be achieved out of the box specifying in the framework configuration folder the IP addresses (or hostnames) of the slaves, where the \texttt{TaskManagers} reside, and the master's own, for each of the nodes. Running the cluster from the master will result in the creation of an overlay network\footnote{It could be necessary to specify \texttt{SSH} authentication credential when prompted}.
+
+To ensure the HA the master node, where the \texttt{JobManager} resides, must be part of a Zookeeper quorum: this behaviur as well is supported out of the box by the framework.
 
 \subsection{Configuration}
 Most of the parameters we quoted describing the stream processing and control system are configurable via a \texttt{.properties} file. For a user guide please visit the project \href{https://github.com/projectember/project-ember}{repository}.
 
-\begin{figure}[!b]
-\begin{center}
-	\includegraphics[scale=0.50]{img/ember_kafkatopology}
-	\caption{Topics based messages routing}
-	\label{fig:ember_kafkatopology}
-\end{center}
-\end{figure}
 
 \section{TESTS AND PERFORMANCES}
 It is clear that Project Ember has a lot of different metrics upon which can be made performances analysis. Proceeding with the validation of our architecture we conducted a lot of tests to ensure the forwarding operation between different operators in API concepts and in behavior (think of the difference between the Kafka consumer as a source, the alerts query on Elasticsearch, the Kafka producers as sinks etc.). In this section we will cover what we think are the most important metrics to face when deploying this system at scale, as well as the configuration we used to produce the data you can appreciate in \hyperref[fig:ember_metrics]{figure 6}.
@@ -193,11 +190,13 @@ In particular, for the stream processing system we used two different approaches
 To simulate the control unit, one of them was deployed on a Raspberry Pi 2 Model B to provide a sort of a dedicated-hardware for our testing environment.
 
 \subsection{Metrics}
-From the topology the most critical components were those that managed the control system. In particular the entire flow from the sensors sources to the final aggregation and data comparison operators. We made an extensive use of the Apache Flink web dashboard to retrieve data during the execution and compare them on an average basis (\hyperref[fig:ember_metrics]{figure 6}).
+From the topology the most critical components were those that managed the control system. In particular the entire flow from the sensors sources to the final aggregation and data comparison operators. We made an extensive use of the Apache Flink web dashboard to retrieve data during the execution and compare them on an average basis (\hyperref[fig:ember_metrics]{figure 6}). From first monitoring sessions of the platform, the latency in forwarding the streams between the operators was below the \texttt{.001} seconds, so we concentrated our effort on the control system. 
 
 The bottleneck was clearly the capacity of the Kafka consumers, that was why different levels of windows were made to filter and aggregate the records to optimize and "batch" the control system input. The latency of the end-to-end system, so from the record generation by the control unit to the control output received via Apache Kafka, is stable due to network performances which are the same for each configuration. We noted that the throughput in the control system is not largely influenced by the increased parallelism of the TaskManagers, even if we have a slight enhancement. We observed however a large improvement in the throughput of the Kafka producers in the end of the control system, which proved an increased responsiveness and a reduced latency. 
 
 It is interesting to analyze the transient period from the starting-up of the control system to the stability. Remembering a one-minute-and-thirty-seconds-large window to aggregate data and produce an optimal control feedback, on the very first run this is actually the end-to-end latency measured. When the system is stable, the latency decreases until reaching a one-minute response time. This is due to the particular configuration of the windows we described, which made the system capable of figuring out an optimal control every minute basing its decision on a small part of the historical data from the lamps - the multiple windows levels aggregation.
+
+It is clear that the statistics output will be delayed by the windows size (which is one-hour-long), with a five-millis-long maximum computation time. However this latency is not significant for the system reactivity.
 
 \section{NEXT STEPS AND CONCLUSIONS}
 During the development of this project different ideas of improvements came to us. They will be described by argument.
@@ -207,6 +206,8 @@ Leaving to the control unit the role of lamp validator it can grant access to th
 
 \subsection{Deployment}
 All the components we described have been tested even on Docker. Create a simple container is easy but relate one to another in order to create a cluster was not easy as well. Docker remains a valuable asset for deploying all of these components with a single instruction to lunch and manage the cluster. Components such as Elasticsearch and Kafka can be scaled at runtime by adding or removing nodes; the system is prone to be autonomic with a contained amount of effort.
+
+A fine tuning on the cluster can be made to decrease the windows size in order to increase the system reactivity to small changes in the illumination system.
 
 \subsection{Conclusions}
 Project Ember was developed keeping in mind the necessities of a modern city. So we tried to provide where possible a plug-and-play solution, for example with the city grid architecture, and a scalability-enabled architectural choices where it was necessary to deploy a larger cluster. We believe Project Ember is ready to be tested on a larger environment, using a real scenario typical values to tune the different components and their cooperation. 
