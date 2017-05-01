@@ -110,7 +110,7 @@ Finally we can choose which operation perform calling the \texttt{apply()} funct
 \subsection{Project queries}
 We will cover in this section each of the queries upon whose the system was projected and built\footnote{Italian project specs and original statement available at \url{http://www.ce.uniroma2.it/courses/sdcc1617/progetti/SDCC1617_progetto1.pdf}}. 
 
-\subsection{Control system}
+\subsection*{Control system}
 The core of the control system is the flow which takes the sensors data streams, buffers and aggregates them twice (by their common selector and with data from lamps) and produces a control output which is sent to Kafka cluster to be consumed by control units.
 
 In particular, the light sensors and traffic records are partitioned via their address and then buffered into a 10 seconds (event time) window. This is made to let the system behave according a unique step, the ten-seconds-interval assumed in the project specifications. Then a simple arithmetic average is performed on the records received, before aggregating the two streams by the address attribute. Then a new 30 seconds (processing time) window is used to aggregate those new tuples with the raw data from the lamps and compare them. Every minute the control system produces and filter by lamp single identifier an optimal control value using the formula:
@@ -121,28 +121,27 @@ The optimal level is calculated via the previous formula, in addition to a compa
 
 Finally the output produced is a \texttt{DataStream<StreetLamp>} which is produced into a topic equal, for each lamp, to its control unit alphanumeric identifier.
 
-\subsection{Statistics}
+\subsection*{Statistics}
 An important aspect of this project was to compute on the fly useful statistics on the smart city grid. We provided three different approaches for three different use cases.
-\subsection*{Expiration ranking}
-To produce an always updated rank of the ten (size is configurable) lamps most in danger for end-of-life expiration, we used an \texttt{EventTimeSlidingWindow} which takes care to perform a per-hour rank upon the last replacement (as a timestamp) attribute from the lamps records.
-\subsection*{Last hour consumption}
-The system is also capable to track on basis of a one-hour-step the consumption average, which is then stored into Elasticsearch for security reasons (if the system is terminated or must be restarted the persistence level will take trace of the history, losing just the last hour measurements). To perform a computation which is focused to give the most reasonable results, we used an exponential moving average:
+\begin{itemize}
+	\item \textbf{Expiration ranking} To produce an always updated rank of the ten (size is configurable) lamps most in danger for end-of-life expiration, we used an \texttt{EventTimeSlidingWindow} which takes care to perform a per-hour rank upon the last replacement (as a timestamp) attribute from the lamps records.
+	\item \textbf{Last hour consumption} The system is also capable to track on basis of a one-hour-step the consumption average, which is then stored into Elasticsearch for security reasons (if the system is terminated or must be restarted the persistence level will take trace of the history, losing just the last hour measurements). To perform a computation which is focused to give the most reasonable results, we used an exponential moving average:
 $$S_t = \alpha*Y_t + (1 - \alpha)*S_{t-1}$$
-$$\alpha = 0.8$$
-giving preference to the last results from the hour-long buffer. The average is computed by address and by ID for further analysis.
-\subsection*{Data history}
-An important aspect of a project like Project Ember is to visualize data. Even if we covered a lot how Elasticsearch works and how Kibana is integrated, we want to remember that their use and a continuously updated history for the lamps values, as well as last hour consumptions, let us build useful dashboards to monitor in (near) real-time the system overall status.
+where $\alpha$ is 0.8, giving preference to the last results from the hour-long buffer. The average is computed by address and by ID for further analysis.
+	\item \textbf{Data history} An important aspect of a project like Project Ember is to visualize data. Even if we covered a lot how Elasticsearch works and how Kibana is integrated, we want to remember that their use and a continuously updated history for the lamps values, as well as last hour consumptions, let us build useful dashboards to monitor in (near) real-time the system overall status.
+\end{itemize}
 
-\subsection{Monitoring}
-A useful feature of Project Ember is to provide a customizable preferential access for operators to the anomalies detection system. Once a configurable time, a query is performed to Elasticsearch cluster using its Apache Lucene based core to check on the entire lamps index for anomalies, such as out of range luminosity levels, electrical failures or lamp life expiration overflowed limits. On Apache Flink cluster this stream is processed, analyzed and proper alerts messages are produced in a new stream according the query results. The latter handles the messages and produce them via a custom sink on Elasticsearch or Kafka clusters, according the final user configuration: dashboard-based approach or not.
-
-\begin{figure}
+\begin{figure}[!b]
 \begin{center}
 	\includegraphics[scale=0.40]{img/ember_ha}
 	\caption{Apache Flink cluster using distributed runtime in high availability configuration}
 	\label{fig:ember_ha}
 \end{center}
 \end{figure}
+
+\subsection*{Monitoring and Alerts generation}
+A useful feature of Project Ember is to provide a customizable preferential access for operators to the anomalies detection system. Once a configurable time (default is 30 seconds), a query is performed to Elasticsearch cluster using its Apache Lucene based core to check on the entire lamps index for anomalies, such as out of range luminosity levels, electrical failures or lamp life expiration overflowed limits: this produces a \texttt{DataStream<Alert>}. This stream is processed, analyzed and proper alerts messages are produced in a new stream according the query results, then they are produced via a custom sink on Elasticsearch or Kafka clusters, according the final user configuration: dashboard-based approach or not.
+
 
 \subsection{Distributed runtime}
 The cluster where Apache Flink runs can be configured to operate under HA\footnote{High Availability} and with a distributed environment to ensure rebalancing of the operators amongst the cluster nodes: high level representation in \hyperref[fig:ember_ha]{figure 5}. 
