@@ -2,7 +2,7 @@
 
 The source code for the City of Light
 
-For a complete paper (wrote according the ACM standard) about the project and its assumption, visit [here](./documentation/acm_ember.pdf) and drop us a line!
+For a complete paper (wrote according the ACM standard) about the project and its assumption, visit [here](./documentation/acm_ember.pdf) and drop us a line! To access slides made to demo the project, visite [here](./documentation/slides_ember.pdf)
 
 ## About
 This is an academic project born to be an efficient solution for the CINI 2017 Challenge on smart cities illumination systems. In particular, the goal was to prototype and test a solution which was capable of (near) real-time data stream processing for monitoring records from street lamps, lumen sensors co-located with the street lamps themselves and from traffic data produced by third-party APIs. We will explore this solution for the following use case: in a smart city context it is necessary to guarantee the maximum efficiency from lamps consumption while providing an optimal illumination within safety limits for pedestrians and drivers according to local traffic intensity. To achieve that, it is necessary to project a grid of smart lamps capable of tuning their light level according to the right amount of energy necessary to provide city aware, safe and green consumption levels. This grid must be powered and managed via a reliable, highly available, processing-capable control system. Introducing Project Ember.
